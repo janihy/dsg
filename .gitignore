@@ -1,0 +1,5 @@
+*.db
+*.mmdb
+logs/
+*.pid
+__pycache__
