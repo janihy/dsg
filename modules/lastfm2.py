@@ -39,7 +39,7 @@ class NoTracksException(Exception):
 
 
 def format_song_output(user, action, artist, song, album):
-    return f'♫ {user} {action} {artist} - {song} ({album}) ♫'
+    return f'♫ {user} {action} {artist} - {song} ♫'
 
 
 def get_api_url(user, api_key):
