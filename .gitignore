@@ -3,3 +3,4 @@
 logs/
 *.pid
 __pycache__
+*.sublime-*
