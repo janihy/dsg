@@ -8,11 +8,13 @@ from sopel import module
 import requests
 import json
 import datetime
+import re
 from bs4 import BeautifulSoup
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
 MOTONET_BASE = 'https://www.motonet.fi/'
 MOTONET_ENDPOINT = MOTONET_BASE + 'fi/jsoncustomervehicle'
+TRAFI_ENDPOINT = "https://autovertaamo.traficom.fi/trafienergiamerkki/{licenseplate}"
 DEFAULT_HEADERS = {}
 
 
@@ -25,7 +27,27 @@ def setup(bot):
 
 
 def get_emissions(licenseplate: str, rawresponse: bool = False) -> dict:
-    return {}
+    emissionsdata = {}
+    headers = DEFAULT_HEADERS
+    headers['Referer'] = "https://autovertaamo.traficom.fi/etusivu/index"
+    req = requests.get(TRAFI_ENDPOINT.format(licenseplate=licenseplate), headers=headers)
+    # print(req.request.url)
+    # print(req.request.headers)
+    # print(req.text)
+
+    soup = BeautifulSoup(req.text, features="lxml")
+    try:
+        tax_elem = soup.find(text=re.compile('Vuotuinen ajoneuvovero'))
+        emissionsdata['yearlytax'] = tax_elem.parent.find('h2').contents[0].strip()
+        co2_elem = soup.find(text=re.compile('Esimerkkiauton CO'))
+        emissionsdata['co2'] = co2_elem.parent.find('strong').contents[0].strip()
+        consumption_elem = soup.find(text=re.compile('Polttoaineenkulutus'))
+        emissionsdata['consumptions'] = [consumption.contents[0].strip() for consumption in consumption_elem.parent.parent.findAll('span')]
+
+    except Exception:
+        return None
+
+    return emissionsdata
 
 
 def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool = False) -> dict:
@@ -58,7 +80,7 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
             'manufacturer': info.get('valmistaja'),
             'model': info.get('malli'),
             'type': info.get('tyyppi'),
-            'year': "{vuosi}",
+            'year': None,
             'power': info.get('teho_kw'),
             'displacement': info.get('iskutilavuus'),
             'cylindercount': info.get('sylinterimaara'),
@@ -86,7 +108,7 @@ def print_technical(bot, trigger):
     techdata = get_technical(licenseplate)
     emissionsdata = get_emissions(licenseplate)
 
-    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}). Ajoneuvovero {emissionsdata.get('')} EUR/vuosi, CO² {emissionsdata.get('')} g/km (NEDC), kulutus {emissionsdata.get('')} l/ 100 km. Oma/kokonaismassa {emissionsdata.get('')} kg. Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
+    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}). Ajoneuvovero {emissionsdata.get('yearlytax')}, CO² {emissionsdata.get('co2')}, kulutus {'/'.join(emissionsdata.get('consumptions'))} l/100 km. Oma/kokonaismassa {emissionsdata.get('')} kg. Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
     bot.say(result)
 
 
@@ -100,5 +122,6 @@ if __name__ == "__main__":
     except Exception:
         pass
 
-    print(get_technical(licenseplate="bey-830"))
-    print(get_technical(licenseplate="ilj-335"))
+    print(get_emissions(licenseplate="bey-830"))
+    print(get_emissions(licenseplate="ycu-994"))
+    # print(get_technical(licenseplate="ilj-335"))
