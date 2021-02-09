@@ -103,12 +103,18 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
     '!rekisteri bey-830',
     'BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto',
     online=True)
+@module.example(
+    '!rekisteri gfs-10', '')
 def print_technical(bot, trigger):
     licenseplate = trigger.group(2)
     techdata = get_technical(licenseplate)
     emissionsdata = get_emissions(licenseplate)
+    if emissionsdata is not None:
+        emissionspart = f"Ajoneuvovero {emissionsdata.get('yearlytax')}, CO² {emissionsdata.get('co2')}, kulutus {'/'.join(emissionsdata.get('consumptions'))} l/100 km."
+    else:
+        emissionspart = "Ei päästö- tai verotietoja."
 
-    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}). Ajoneuvovero {emissionsdata.get('yearlytax')}, CO² {emissionsdata.get('co2')}, kulutus {'/'.join(emissionsdata.get('consumptions'))} l/100 km. Oma/kokonaismassa {emissionsdata.get('')} kg. Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
+    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}). {emissionspart} Oma/kokonaismassa {techdata.get('')} kg. Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
     bot.say(result)
 
 
@@ -123,5 +129,5 @@ if __name__ == "__main__":
         pass
 
     print(get_emissions(licenseplate="bey-830"))
-    print(get_emissions(licenseplate="ycu-994"))
+    print(get_emissions(licenseplate="gfs-10"))
     # print(get_technical(licenseplate="ilj-335"))
