@@ -92,8 +92,11 @@ def print_technical(bot, trigger):
 
 
 if __name__ == "__main__":
-    from sopel.test_tools import run_example_tests
-    run_example_tests(__file__)
+    try:
+        from sopel.test_tools import run_example_tests
+        run_example_tests(__file__)
+    except Exception:
+        pass
 
     print(get_technical(licenseplate="bey-830"))
     print(get_technical(licenseplate="ilj-335"))
