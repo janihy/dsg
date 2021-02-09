@@ -31,10 +31,6 @@ def get_emissions(licenseplate: str, rawresponse: bool = False) -> dict:
     headers = DEFAULT_HEADERS
     headers['Referer'] = "https://autovertaamo.traficom.fi/etusivu/index"
     req = requests.get(TRAFI_ENDPOINT.format(licenseplate=licenseplate), headers=headers)
-    # print(req.request.url)
-    # print(req.request.headers)
-    # print(req.text)
-
     soup = BeautifulSoup(req.text, features="lxml")
     try:
         tax_elem = soup.find(text=re.compile('Vuotuinen ajoneuvovero'))
@@ -43,7 +39,6 @@ def get_emissions(licenseplate: str, rawresponse: bool = False) -> dict:
         emissionsdata['co2'] = co2_elem.parent.find('strong').contents[0].strip()
         consumption_elem = soup.find(text=re.compile('Polttoaineenkulutus'))
         emissionsdata['consumptions'] = [consumption.contents[0].strip() for consumption in consumption_elem.parent.parent.findAll('span')]
-
     except Exception:
         return None
 
@@ -54,9 +49,8 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
     techdata = {}
     if backend == "motonet":
         client = requests.session()
-        r = client.get(MOTONET_BASE)
-
-        soup = BeautifulSoup(r.text, features="lxml")
+        req = client.get(MOTONET_BASE)
+        soup = BeautifulSoup(req.text, features="lxml")
         csrftoken = soup.find('input', {'name': 'CSRFTOKEN'}).get('value')
 
         payload = {
@@ -68,13 +62,9 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
         headers['X-CSRF-TOKEN'] = csrftoken
 
         req = client.post(MOTONET_ENDPOINT, data=payload, headers=headers)
-        # print(req.request.url)
-        # print(req.request.headers)
-        # print(req.request.body)
         data = json.loads(req.text)
         if rawresponse:
             print(json.dumps(data, indent=2))
-            print(data)
         info = data.get('ajoneuvotiedot', [{}])[0]
         techdata = {
             'manufacturer': info.get('valmistaja'),
@@ -103,8 +93,6 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
     '!rekisteri bey-830',
     'BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto',
     online=True)
-@module.example(
-    '!rekisteri gfs-10', '')
 def print_technical(bot, trigger):
     licenseplate = trigger.group(2)
     techdata = get_technical(licenseplate)
@@ -118,9 +106,6 @@ def print_technical(bot, trigger):
     bot.say(result)
 
 
-# BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto
-
-
 if __name__ == "__main__":
     try:
         from sopel.test_tools import run_example_tests
@@ -128,6 +113,5 @@ if __name__ == "__main__":
     except Exception:
         pass
 
-    print(get_emissions(licenseplate="bey-830"))
-    print(get_emissions(licenseplate="gfs-10"))
-    # print(get_technical(licenseplate="ilj-335"))
+    # print(get_emissions(licenseplate="bey-830"))
+    # print(get_emissions(licenseplate="gfs-10"))
