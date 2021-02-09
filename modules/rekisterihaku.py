@@ -7,6 +7,7 @@ from sopel import module
 
 import requests
 import json
+import datetime
 from bs4 import BeautifulSoup
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
@@ -64,6 +65,7 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
             'fueltype': info.get('polttoaine').lower(),
             'drivetype': data.get('vetotapa').lower(),
             'enginecode': info.get('moottorikoodit').replace(' ', ''),
+            'registrationdate': datetime.datetime.strptime(data.get('ensirekisterointipvm'), '%Y-%m-%dT%H:%M:%SZ'),
             'vin': data.get('valmistenumero'),
             'suomiauto': True if data.get('maahantuotu') is None else False
         }
@@ -84,7 +86,7 @@ def print_technical(bot, trigger):
     techdata = get_technical(licenseplate)
     emissionsdata = get_emissions(licenseplate)
 
-    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}). Ajoneuvovero {emissionsdata.get('')} EUR/vuosi, CO²  {emissionsdata.get('')} g/km (NEDC), kulutus  {emissionsdata.get('')} l/ 100 km. Oma/kokonaismassa {emissionsdata.get('')} kg. Ensirekisteröinti {emissionsdata.get('')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
+    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}). Ajoneuvovero {emissionsdata.get('')} EUR/vuosi, CO² {emissionsdata.get('')} g/km (NEDC), kulutus {emissionsdata.get('')} l/ 100 km. Oma/kokonaismassa {emissionsdata.get('')} kg. Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
     bot.say(result)
 
 
