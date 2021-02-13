@@ -3,7 +3,7 @@
     made by tuplis 2021
 """
 from __future__ import unicode_literals, absolute_import, division, print_function
-from sopel import module
+from sopel import module, tools
 
 import requests
 import json
@@ -23,7 +23,38 @@ def configure(config):
 
 
 def setup(bot):
-    pass
+    if 'nettix_token' not in bot.memory:
+        bot.memory['nettix_token'] = tools.SopelMemory()
+
+
+def refresh_nettix_token(bot) -> bool:
+    res = requests.post('https://auth.nettix.fi/oauth2/token', data={'grant_type': 'client_credentials'})
+    token = json.loads(res.text)
+    bot.memory['nettix_token']['access_token'] = token.get('access_token', '')
+    bot.memory['nettix_token']['expires_in'] = datetime.datetime.now() + datetime.timedelta(seconds=token.get('expires_in', ''))
+    return res.status_code == 200
+
+
+def get_nettix_link(bot, licenseplate) -> str:
+    if bot.memory['nettix_token'].get('expires_in', datetime.datetime.now()) <= datetime.datetime.now():
+        if not refresh_nettix_token(bot):
+            bot.say("oops, nettix api broken")
+
+    headers = {
+        "Accept": "application/json",
+        "X-Access-Token": bot.memory['nettix_token'].get('access_token')
+    }
+
+    payload = {
+        'identificationList': licenseplate
+    }
+
+    res = requests.get('https://api.nettix.fi/rest/car/search', params=payload, headers=headers)
+    nettix_ad = json.loads(res.text)
+    if nettix_ad:
+        return nettix_ad[0].get('adUrl')
+    else:
+        return ""
 
 
 def get_emissions(licenseplate: str, rawresponse: bool = False) -> dict:
@@ -125,6 +156,10 @@ def print_technical(bot, trigger):
     result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}).{emissionspart}{masspart} Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
     bot.say(result)
 
+    nettiauto_url = get_nettix_link(bot, licenseplate)
+    if nettiauto_url:
+        bot.say(f"On muuten myynnissä: {nettiauto_url}")
+
 
 if __name__ == "__main__":
     try:
@@ -135,3 +170,4 @@ if __name__ == "__main__":
 
     # print(get_emissions(licenseplate="bey-830"))
     # print(get_emissions(licenseplate="gfs-10"))
+    # print(get_nettix_token())
