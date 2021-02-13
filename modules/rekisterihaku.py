@@ -65,23 +65,36 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
         data = json.loads(req.text)
         if rawresponse:
             print(json.dumps(data, indent=2))
-        info = data.get('ajoneuvotiedot', [{}])[0]
+        if data is None:
+            return None
+        motonet_info = data.get('ajoneuvotiedot', [{}])[0]
+
+        req = client.get(BILTEMA_ENDPOINT.format(licenseplate=licenseplate))
+        try:
+            biltema_info = json.loads(req.text)
+            if rawresponse:
+                print(json.dumps(biltema_info, indent=2))
+        except Exception:
+            biltema_info = {}
+        firstreg = datetime.datetime.strptime(data.get('ensirekisterointipvm'), '%Y-%m-%dT%H:%M:%SZ')
         techdata = {
-            'manufacturer': info.get('valmistaja'),
-            'model': info.get('malli'),
-            'type': info.get('tyyppi'),
-            'year': None,
-            'power': info.get('teho_kw'),
-            'displacement': info.get('iskutilavuus'),
-            'cylindercount': info.get('sylinterimaara'),
-            'fueltype': info.get('polttoaine').lower(),
+            'manufacturer': motonet_info.get('valmistaja'),
+            'model': motonet_info.get('malli'),
+            'type': motonet_info.get('tyyppi'),
+            'year': biltema_info.get('modelYear', None) or f'~{firstreg.year}',
+            'power': motonet_info.get('teho_kw'),
+            'displacement': motonet_info.get('iskutilavuus'),
+            'cylindercount': motonet_info.get('sylinterimaara'),
+            'fueltype': motonet_info.get('polttoaine').lower(),
             'drivetype': data.get('vetotapa').lower(),
-            'enginecode': info.get('moottorikoodit').replace(' ', ''),
-            'registrationdate': datetime.datetime.strptime(data.get('ensirekisterointipvm'), '%Y-%m-%dT%H:%M:%SZ'),
+            'enginecode': motonet_info.get('moottorikoodit').replace(' ', ''),
+            'weight': biltema_info.get('weightKg'),
+            'maxweight': biltema_info.get('maxWeightKg'),
+            'length': biltema_info.get('lenght'),
+            'registrationdate': firstreg,
             'vin': data.get('valmistenumero'),
             'suomiauto': True if data.get('maahantuotu') is None else False
         }
-
     else:
         raise Exception('not implemented yet :-(')
     return techdata
@@ -91,18 +104,25 @@ def get_technical(licenseplate: str, backend: str = "motonet", rawresponse: bool
 @module.commands('rekkari')
 @module.example(
     '!rekisteri bey-830',
-    'BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto',
+    'BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg, pituus 4480 mm. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto',
     online=True)
 def print_technical(bot, trigger):
     licenseplate = trigger.group(2)
     techdata = get_technical(licenseplate)
+    if techdata is None:
+        bot.say("Varmaan joku romu mihin ei saa enää ees varaosia")
+        return False
     emissionsdata = get_emissions(licenseplate)
     if emissionsdata is not None:
-        emissionspart = f"Ajoneuvovero {emissionsdata.get('yearlytax')}, CO² {emissionsdata.get('co2')}, kulutus {'/'.join(emissionsdata.get('consumptions'))} l/100 km."
+        emissionspart = f" Ajoneuvovero {emissionsdata.get('yearlytax')}, CO² {emissionsdata.get('co2')}, kulutus {'/'.join(emissionsdata.get('consumptions'))} l/100 km."
     else:
-        emissionspart = "Ei päästö- tai verotietoja."
+        emissionspart = " Ei päästö- tai verotietoja."
+    if techdata.get('weight'):
+        masspart = f" Oma/kokonaismassa {techdata.get('weight')}/{techdata.get('maxweight')} kg, pituus {techdata.get('length')} mm."
+    else:
+        masspart = ""
 
-    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}). {emissionspart} Oma/kokonaismassa {techdata.get('')} kg. Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
+    result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('drivetype')} ({techdata.get('enginecode')}).{emissionspart}{masspart} Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
     bot.say(result)
 
 
