@@ -110,7 +110,7 @@ def print_technical(bot, trigger):
     licenseplate = trigger.group(2)
     techdata = get_technical(licenseplate)
     if techdata is None:
-        bot.say("{licenseplate.upper()}: Varmaan joku romu mihin ei saa enää ees varaosia :-(")
+        bot.say(f"{licenseplate.upper()}: Varmaan joku romu mihin ei saa enää ees varaosia :-(")
         return False
     emissionsdata = get_emissions(licenseplate)
     if emissionsdata is not None:
