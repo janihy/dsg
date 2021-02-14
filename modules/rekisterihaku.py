@@ -57,6 +57,24 @@ def get_nettix_link(bot, licenseplate) -> str:
         return ""
 
 
+def get_tori_link(licenseplate: str) -> str:
+    payload = {
+        'hakusana': licenseplate
+    }
+
+    res = requests.get('https://autot.tori.fi/vaihtoautot', params=payload)
+    soup = BeautifulSoup(res.text, features="lxml")
+    data = json.loads(soup.find('script', id="__NEXT_DATA__").string)
+
+    try:
+        # yeah i know
+        link = data['props']['pageProps']['initialReduxState']['search']['result']['list_ads'][0]['share_link']
+    except Exception:
+        return None
+
+    return link
+
+
 def get_emissions(licenseplate: str, rawresponse: bool = False) -> dict:
     emissionsdata = {}
     headers = DEFAULT_HEADERS
@@ -157,8 +175,11 @@ def print_technical(bot, trigger):
     bot.say(result)
 
     nettiauto_url = get_nettix_link(bot, licenseplate)
+    tori_url = get_tori_link(licenseplate)
     if nettiauto_url:
         bot.say(f"On muuten myynnissä: {nettiauto_url}")
+    if tori_url:
+        bot.say(f"On muuten myynnissä: {tori_url}")
 
 
 if __name__ == "__main__":
