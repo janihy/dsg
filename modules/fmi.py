@@ -6,7 +6,7 @@ from __future__ import unicode_literals, absolute_import, division, print_functi
 from sopel import module
 
 import requests
-import datetime
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
 FMI_URL = "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=getFeature&storedquery_id={query_id}&place={place}&timezone=Europe/Helsinki&starttime={starttime}"
@@ -63,15 +63,16 @@ def setup(bot):
 def get_fmi_data(place: str) -> {}:
     observations_query = "fmi::observations::weather::timevaluepair"
     forecast_query = "fmi::forecast::hirlam::surface::point::timevaluepair"
-    starttime = int(datetime.datetime.now().timestamp()) - 3600
+    starttime = int((datetime.now() - timedelta(hours=1)).timestamp())
     result = {}
 
     res = requests.get(FMI_URL.format(query_id=observations_query, place=place, starttime=starttime))
     observations_soup = BeautifulSoup(res.text, features='lxml')
     res = requests.get(FMI_URL.format(query_id=forecast_query, place=place, starttime=starttime))
     forecast_soup = BeautifulSoup(res.text, features='lxml')
+    print(forecast_soup)
 
-    result['timestamp'] = datetime.datetime.strptime(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:time')[-1].text, "%Y-%m-%dT%H:%M:%S+02:00")
+    result['timestamp'] = datetime.strptime(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:time')[-1].text, "%Y-%m-%dT%H:%M:%S+02:00")
     result['place'] = observations_soup.find('gml:name').text
     result['temperature'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:value')[-1].text
     result['winddirection'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-wd_10min'}).find_all('wml2:value')[-1].text)
@@ -82,8 +83,11 @@ def get_fmi_data(place: str) -> {}:
     result['weather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find_all('wml2:value')[0].text))
     result['rainfall'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-r_1h'}).find_all('wml2:value')[-1].text if not "NaN" else 0
     result['snow'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-snow_aws'}).find_all('wml2:value')[-1].text)
-    result['forecasttemp'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-Temperature'}).find('wml2:time', string="2021-02-14T15:00:00+02:00").find_next_sibling('wml2:value').text)
-    result['forecastweather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find('wml2:time', string="2021-02-14T15:00:00+02:00").find_next_sibling('wml2:value').text))
+
+    timestamp = str((result['timestamp'] + timedelta(days=1)).strftime('%Y-%m-%dT15:00:00+02:00'))
+    result['forecasttemp'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-Temperature'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text)
+    result['forecastweather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text))
+    print(result)
     return result
 
 
@@ -102,9 +106,12 @@ def print_weather(bot, trigger):
     weather['visibility'] = weather['visibility'] / 1000
     weather['weather'] = WEATHERCODE_MAP[weather['weather']]
     weather['forecastweather'] = WEATHERCODE_MAP[weather['forecastweather']]
-    weather['windfrom'] = DIRECTION_MAP[int((weather['winddirection'] + 22.5) / 45) % 8]
+    try:
+        weather['windfrom'] = DIRECTION_MAP[int((weather['winddirection'] + 22.5) / 45) % 8]
+    except Exception:
+        weather['windfrom'] = ""
 
-    msg = "{place} {temperature}°C ({timestamp}), {weather}. Ilmankosteus {rh:.0f} %, sademäärä (<1h): {rainfall} mm. Tuulee {windspeed} m/s {windfrom} ({winddirection:.0f}°). Näkyvyys {visibility:.0f} km, pilvisyys {clouds:.0f}/8. Lumensyvyys {snow:.0f} cm. Huomispäiväksi luvattu {forecasttemp}°C, {forecastweather}.".format(**weather)
+    msg = "{place} {temperature}°C ({timestamp}), {weather}. Ilmankosteus {rh:.0f} %, sademäärä (<1h): {rainfall} mm. Tuulee {windspeed} m/s {windfrom} ({winddirection:.0f}°). Näkyvyys {visibility:.0f} km, pilvisyys {clouds:.0f}/8. Lumensyvyys {snow:.0f} cm. Huomispäiväksi luvattu {forecasttemp:.1f}°C, {forecastweather}.".format(**weather)
     bot.say(msg)
 
 
