@@ -9,6 +9,7 @@ from sopel.module import commands, require_privmsg, rule
 from sopel.config.types import StaticSection, ValidatedAttribute
 
 import requests
+import json
 
 SPOTIFY_AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token"
@@ -51,22 +52,55 @@ def get_action(last_track):
         return 'last listened to'
 
 
+def get_now_playing(spotify):
+    return "Rick Astley - Never Gonna Give You Up"
+
+
+@commands('sdebug')
+def spotify_debug(bot, trigger):
+    state = db.SopelDB(bot.config)
+    spotify = state.get_nick_value(trigger.nick, 'spotify')
+    bot.reply(json.dumps(spotify))
+
+
 @commands('snp')
-def fm(bot, trigger):
-    last_track = {}
-    action = get_action(last_track)
+def spotify_np(bot, trigger):
+
+    state = db.SopelDB(bot.config)
+    spotify = state.get_nick_value(trigger.nick, 'spotify')
+    if not spotify:
+        bot.reply('Laitoin sulle msg.')
+        bot.say('spotify piste com', trigger.nick)
 
     # out = format_song_output(trigger.nick, action, last_track['artist']['#text'], last_track['name'], last_track['album']['#text'])
-
-    bot.say("spotify np triggered")
 
 
 @require_privmsg()
 @rule(r'^.spotify auth (\w+)')
 def spotify_authenticate(bot, trigger):
-    authkey = trigger.group(1)
+    authcode = trigger.group(1)
+
+    headers = {
+        'Authorization': authcode
+    }
+    payload = {
+        'grant_type': 'authorization_code',
+        'code': authcode
+    }
+
+    res = requests.post(SPOTIFY_AUTH_ENDPOINT, headers=headers, data=payload)
+    bot.reply(res.text)
 
     state = db.SopelDB(bot.config)
-    state.set_nick_value(trigger.nick, 'spotify_auth_key', authkey)
+
+    spotify = {
+        'access_token': '',
+        'expires_at': '',
+        'refresh_token': ''
+    }
+    state.set_nick_value(trigger.nick, 'spotify', spotify)
+
+    # ask spotify api for the access_token and the refresh_token, no need to really save the auth code
+    # that code will be expired quickly anyway
 
     bot.reply('Spotify authentication key saved.')
