@@ -105,6 +105,8 @@ def print_weather(bot, trigger):
         fmi_last_location = state.get_nick_value(trigger.nick, 'fmi_last_location')
         if fmi_last_location:
             location = fmi_last_location
+        else:
+            location = "Espoo"
     else:
         state = db.SopelDB(bot.config)
         state.set_nick_value(trigger.nick, 'fmi_last_location', location)
