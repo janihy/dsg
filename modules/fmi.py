@@ -3,7 +3,7 @@
     made by tuplis 2021
 """
 from __future__ import unicode_literals, absolute_import, division, print_function
-from sopel import module
+from sopel import module, db
 
 import requests
 from datetime import datetime, timedelta
@@ -100,6 +100,15 @@ def get_fmi_data(place: str) -> {}:
     online=True)
 def print_weather(bot, trigger):
     location = trigger.group(2)
+    if not location:
+        state = db.SopelDB(bot.config)
+        fmi_last_location = state.get_nick_value(trigger.nick, 'fmi_last_location')
+        if fmi_last_location:
+            location = fmi_last_location
+    else:
+        state = db.SopelDB(bot.config)
+        state.set_nick_value(trigger.nick, 'fmi_last_location', location)
+
     weather = get_fmi_data(location)
     weather['timestamp'] = weather['timestamp'].strftime('%H:%M')
     weather['winddirection'] = weather['winddirection']
