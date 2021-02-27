@@ -78,8 +78,10 @@ def get_now_playing(bot, nick, spotify):
         'Authorization': f'Bearer {spotify.get("access_token")}'
     }
     res = requests.get(SPOTIFY_NP_ENDPOINT, headers=headers).json()
+    # TODO: what if the user is not listening at all? spotify api returns "204 no content"
     item = res.get('item')
 
+    # TODO: sometimes there are more than one artist which we would like to display
     np = {
         'artist': item.get('artists', [{}])[0].get('name'),
         'title': item.get('name'),
