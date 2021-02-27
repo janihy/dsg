@@ -105,20 +105,24 @@ def spotify_forget(bot, trigger):
     state.delete_nick_value(trigger.nick, 'spotify')
 
 
-@commands('np')
+@rule(r'^.np(?: (\S+))?')
 def spotify_np(bot, trigger):
     client_id = bot.config.spotify.client_id
     state = db.SopelDB(bot.config)
-    spotify = state.get_nick_value(trigger.nick, 'spotify')
+    nick = trigger.group(1) or trigger.nick
+    spotify = state.get_nick_value(nick, 'spotify')
     if not spotify:
         # user hasn't gone through the authentication flow, let's send
         # a link to the authenticator
-        bot.reply('Laitoin sulle msg.')
-        bot.say(SPOTIFY_AUTH_ENDPOINT.format(client_id=client_id), trigger.nick)
+        if nick == trigger.nick:
+            bot.reply('Laitoin sulle msg.')
+            bot.say(SPOTIFY_AUTH_ENDPOINT.format(client_id=client_id), nick)
+        else:
+            bot.say(f'{nick} on varmaan joku köyhä jolla ei oo varaa spotifyyn :/')
     else:
         # the user has already registered and everything should be fine
-        np = get_now_playing(bot, trigger.nick, spotify)
-        bot.say(format_song_output(trigger.nick, np))
+        np = get_now_playing(bot, nick, spotify)
+        bot.say(format_song_output(nick, np))
 
 
 @require_privmsg()
