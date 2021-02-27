@@ -105,7 +105,7 @@ def spotify_forget(bot, trigger):
     state.delete_nick_value(trigger.nick, 'spotify')
 
 
-@rule(r'^.np(?: (\S+))?')
+@rule(r'^!np(?: (\S+))?')
 def spotify_np(bot, trigger):
     client_id = bot.config.spotify.client_id
     state = db.SopelDB(bot.config)
