@@ -2,7 +2,6 @@
 """
     made by tuplis 2021
 """
-from __future__ import (unicode_literals, absolute_import, division, print_function)
 
 from sopel import db
 from sopel.module import commands, require_privmsg, rule
@@ -38,10 +37,10 @@ def format_song_output(user, np):
     title = np.get('title')
     uri = np.get('uri')
     if np.get('currently_playing'):
-        mode = "is listening to"
+        action = "is listening to"
     else:
-        mode = "last listened to"
-    return f'♫ {user} {mode} {artist} - {title} ({uri}) ♫'
+        action = "last listened to"
+    return f'♫ {user} {action} {artist} - {title} ({uri}) ♫'
 
 
 def refresh_spotify_token(bot, nick, spotify):
@@ -54,12 +53,10 @@ def refresh_spotify_token(bot, nick, spotify):
         'grant_type': 'refresh_token',
         'refresh_token': spotify.get('refresh_token')
     }
-
     response = requests.post(SPOTIFY_TOKEN_ENDPOINT, headers=headers, data=payload)
+
     if response.status_code == 200:
-
-        response = json.loads(response.text)
-
+        response = response.json()
         spotify.update({
                 'access_token': response.get('access_token'),
                 'expires_at': (datetime.now()+timedelta(seconds=response.get('expires_in'))).isoformat()
@@ -74,19 +71,20 @@ def refresh_spotify_token(bot, nick, spotify):
 
 
 def get_now_playing(bot, nick, spotify):
-    if not spotify.get('expires_at') or datetime.fromisoformat(spotify.get('expires_at')) > datetime.now():
+    if not spotify.get('expires_at') or datetime.fromisoformat(spotify.get('expires_at')) < datetime.now():
         spotify = refresh_spotify_token(bot, nick, spotify)
+
     headers = {
         'Authorization': f'Bearer {spotify.get("access_token")}'
     }
-    res = requests.get(SPOTIFY_NP_ENDPOINT, headers=headers)
-    item = res.json().get('item')
+    res = requests.get(SPOTIFY_NP_ENDPOINT, headers=headers).json()
+    item = res.get('item')
 
     np = {
         'artist': item.get('artists', [{}])[0].get('name'),
         'title': item.get('name'),
         'uri': item.get('uri'),
-        'currently_playing': res.json().get('is_playing')
+        'currently_playing': res.get('is_playing')
     }
 
     return np
@@ -113,6 +111,8 @@ def spotify_np(bot, trigger):
     state = db.SopelDB(bot.config)
     spotify = state.get_nick_value(trigger.nick, 'spotify')
     if not spotify:
+        # user hasn't gone through the authentication flow, let's send
+        # a link to the authenticator
         bot.reply('Laitoin sulle msg.')
         bot.say(SPOTIFY_AUTH_ENDPOINT.format(client_id=client_id), trigger.nick)
     else:
@@ -120,16 +120,16 @@ def spotify_np(bot, trigger):
         np = get_now_playing(bot, trigger.nick, spotify)
         bot.say(format_song_output(trigger.nick, np))
 
-    # out = format_song_output(trigger.nick, action, last_track['artist']['#text'], last_track['name'], last_track['album']['#text'])
-
 
 @require_privmsg()
 @rule(r'^.spotify auth (\S+)')
 def spotify_authenticate(bot, trigger):
+    # we'll follow the Authorization Code flow from Spotify docs:
+    # https://developer.spotify.com/documentation/general/guides/authorization-guide/
+
     authcode = trigger.group(1)
     client_id = bot.config.spotify.client_id
     client_secret = bot.config.spotify.client_secret
-    state = db.SopelDB(bot.config)
 
     headers = {
         'Authorization': 'Basic ' + b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
@@ -139,9 +139,10 @@ def spotify_authenticate(bot, trigger):
         'code': authcode,
         'redirect_uri': 'https://dsg.fi/bot-callback/'
     }
-
     res = requests.post(SPOTIFY_TOKEN_ENDPOINT, headers=headers, data=payload)
+
     if res.status_code == 200:
+        state = db.SopelDB(bot.config)
         response = json.loads(res.text)
 
         spotify = {
@@ -150,11 +151,6 @@ def spotify_authenticate(bot, trigger):
             'refresh_token': response.get('refresh_token')
         }
         state.set_nick_value(trigger.nick, 'spotify', spotify)
-
-        # ask spotify api for the access_token and the refresh_token, no need to really save the auth code
-        # that code will be expired quickly anyway
-
-        bot.reply('Spotify authentication key saved.')
-
+        bot.say('5/5')
     else:
-        bot.reply('Spotify authentication failed :-(')
+        bot.say('Nyt meni joku perseelleen vituiks :-(')
