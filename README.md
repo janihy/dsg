@@ -1,5 +1,5 @@
 # what is dsg
-dsg is a bot based on [Sopel](https://sopel.chat/) since 2021, and was based on eggdrop before that.
+dsg is an IRC bot based on [Sopel](https://sopel.chat/). It was ported to Sopel in 2021: before that it was based on [eggdrop](https://www.eggheads.org/).
 This is a monorepo for the modules dsg is running.
 
 ## ye olde scripts

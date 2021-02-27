@@ -1,11 +1,13 @@
+# coding=utf-8
 """
     made by tuplis 2021
 """
 
+from bs4 import BeautifulSoup
+
 import sopel.module
 import math
 import requests
-from bs4 import BeautifulSoup as BS
 
 BASEURL = 'https://www.etaisyys.com/etaisyys'
 
@@ -22,7 +24,7 @@ def module(bot, trigger):
 
     try:
         response = requests.get(f"{BASEURL}/{start}/{end}", verify=False)
-        dom = BS(response.text, 'html.parser')
+        dom = BeautifulSoup(response.text, 'html.parser')
         map = int(dom.find(id='totaldistancekm').get('value'), 10)
         road = int(dom.find(id='distance').get('value'), 10)
 
@@ -35,4 +37,5 @@ def module(bot, trigger):
         minutes = math.floor((time - hours) * 60)
         bot.reply(f'{start.title()} - {end.title()}: {map} km linnuntietä, {road} km tietä pitkin ({hours} h {minutes} min nopeudella {speed:.0f} km/h)')
     except Exception as e:
-        bot.reply(f'Eipä ollu, varmaan kirjotit jotain väärin')
+        bot.reply('Eipä ollu, varmaan kirjotit jotain väärin')
+        bot.reply(f'{e}')

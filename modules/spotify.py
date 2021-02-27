@@ -4,7 +4,7 @@
 """
 
 from sopel import db
-from sopel.module import commands, require_privmsg, rule
+from sopel.module import require_privmsg, rule
 from sopel.config.types import StaticSection, ValidatedAttribute
 from base64 import b64encode
 from datetime import datetime, timedelta
@@ -58,8 +58,8 @@ def refresh_spotify_token(bot, nick, spotify):
     if response.status_code == 200:
         response = response.json()
         spotify.update({
-                'access_token': response.get('access_token'),
-                'expires_at': (datetime.now()+timedelta(seconds=response.get('expires_in'))).isoformat()
+            'access_token': response.get('access_token'),
+            'expires_at': (datetime.now() + timedelta(seconds=response.get('expires_in'))).isoformat()
         })
 
         state = db.SopelDB(bot.config)
@@ -151,7 +151,7 @@ def spotify_authenticate(bot, trigger):
 
         spotify = {
             'access_token': response.get('access_token'),
-            'expires_at': (datetime.now()+timedelta(seconds=response.get('expires_in'))).isoformat(),
+            'expires_at': (datetime.now() + timedelta(seconds=response.get('expires_in'))).isoformat(),
             'refresh_token': response.get('refresh_token')
         }
         state.set_nick_value(trigger.nick, 'spotify', spotify)

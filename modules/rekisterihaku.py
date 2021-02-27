@@ -2,14 +2,14 @@
 """
     made by tuplis 2021
 """
-from __future__ import unicode_literals, absolute_import, division, print_function
+
 from sopel import module, tools
+from bs4 import BeautifulSoup
 
 import requests
 import json
 import datetime
 import re
-from bs4 import BeautifulSoup
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
 MOTONET_BASE = 'https://www.motonet.fi/'

@@ -1,13 +1,13 @@
-# coding=utf8
+# coding=utf-8
 """
     made by tuplis 2021
 """
-from __future__ import unicode_literals, absolute_import, division, print_function
-from sopel import module, db
 
-import requests
+from sopel import module, db
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
+
+import requests
 
 FMI_URL = "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=getFeature&storedquery_id={query_id}&place={place}&timezone=Europe/Helsinki&starttime={starttime}"
 WEATHERCODE_MAP = {
