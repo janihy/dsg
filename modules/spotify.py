@@ -8,6 +8,7 @@ from sopel import db
 from sopel.module import commands, require_privmsg, rule
 from sopel.config.types import StaticSection, ValidatedAttribute
 from base64 import b64encode
+from datetime import datetime, timedelta
 
 import requests
 import json
@@ -43,7 +44,38 @@ def format_song_output(user, np):
     return f'♫ {user} {mode} {artist} - {title} ({uri}) ♫'
 
 
-def get_now_playing(spotify):
+def refresh_spotify_token(bot, nick, spotify):
+    client_id = bot.config.spotify.client_id
+    client_secret = bot.config.spotify.client_secret
+    headers = {
+        'Authorization': 'Basic ' + b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
+    }
+    payload = {
+        'grant_type': 'refresh_token',
+        'refresh_token': spotify.get('refresh_token')
+    }
+
+    response = requests.post(SPOTIFY_TOKEN_ENDPOINT, headers=headers, data=payload)
+    if response.status_code == 200:
+
+        response = json.loads(response.text)
+
+        spotify.update({
+                'access_token': response.get('access_token'),
+                'expires_at': (datetime.now()+timedelta(seconds=response.get('expires_in'))).isoformat()
+        })
+
+        state = db.SopelDB(bot.config)
+        state.set_nick_value(nick, 'spotify', spotify)
+
+        return spotify
+    else:
+        bot.say('refresh token puuttuu tai jotain :-(')
+
+
+def get_now_playing(bot, nick, spotify):
+    if not spotify.get('expires_at') or datetime.fromisoformat(spotify.get('expires_at')) > datetime.now():
+        spotify = refresh_spotify_token(bot, nick, spotify)
     headers = {
         'Authorization': f'Bearer {spotify.get("access_token")}'
     }
@@ -68,7 +100,14 @@ def spotify_debug(bot, trigger):
     bot.reply(json.dumps(spotify))
 
 
-@commands('snp')
+@require_privmsg()
+@rule(r'^.spotify forget')
+def spotify_forget(bot, trigger):
+    state = db.SopelDB(bot.config)
+    state.delete_nick_value(trigger.nick, 'spotify')
+
+
+@commands('np')
 def spotify_np(bot, trigger):
     client_id = bot.config.spotify.client_id
     state = db.SopelDB(bot.config)
@@ -78,7 +117,7 @@ def spotify_np(bot, trigger):
         bot.say(SPOTIFY_AUTH_ENDPOINT.format(client_id=client_id), trigger.nick)
     else:
         # the user has already registered and everything should be fine
-        np = get_now_playing(spotify)
+        np = get_now_playing(bot, trigger.nick, spotify)
         bot.say(format_song_output(trigger.nick, np))
 
     # out = format_song_output(trigger.nick, action, last_track['artist']['#text'], last_track['name'], last_track['album']['#text'])
@@ -107,7 +146,7 @@ def spotify_authenticate(bot, trigger):
 
         spotify = {
             'access_token': response.get('access_token'),
-            'expires_at': '',
+            'expires_at': (datetime.now()+timedelta(seconds=response.get('expires_in'))).isoformat(),
             'refresh_token': response.get('refresh_token')
         }
         state.set_nick_value(trigger.nick, 'spotify', spotify)
