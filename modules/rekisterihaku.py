@@ -5,6 +5,7 @@
 
 from sopel import module, tools
 from bs4 import BeautifulSoup
+from typing import Dict, Optional
 
 import requests
 import json
@@ -15,7 +16,7 @@ BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi
 MOTONET_BASE = 'https://www.motonet.fi/'
 MOTONET_ENDPOINT = MOTONET_BASE + 'fi/jsoncustomervehicle'
 TRAFI_ENDPOINT = "https://autovertaamo.traficom.fi/trafienergiamerkki/{licenseplate}"
-DEFAULT_HEADERS = {}
+DEFAULT_HEADERS: Dict[str, str] = {}
 
 
 def configure(config):
@@ -35,7 +36,7 @@ def refresh_nettix_token(bot) -> bool:
     return res.status_code == 200
 
 
-def get_nettix_link(bot, licenseplate) -> str:
+def get_nettix_link(bot, licenseplate) -> Optional[str]:
     if bot.memory['nettix_token'].get('expires_in', datetime.datetime.now()) <= datetime.datetime.now():
         if not refresh_nettix_token(bot):
             bot.say("oops, nettix api broken")
@@ -54,10 +55,10 @@ def get_nettix_link(bot, licenseplate) -> str:
     if nettix_ad:
         return nettix_ad[0].get('adUrl')
     else:
-        return ""
+        return None
 
 
-def get_tori_link(licenseplate: str) -> str:
+def get_tori_link(licenseplate: str) -> Optional[str]:
     payload = {
         'hakusana': licenseplate
     }
@@ -75,7 +76,7 @@ def get_tori_link(licenseplate: str) -> str:
     return link
 
 
-def get_emissions(licenseplate: str, rawresponse: bool = False) -> dict:
+def get_emissions(licenseplate: str, rawresponse: bool = False) -> Optional[dict]:
     emissionsdata = {}
     headers = DEFAULT_HEADERS
     headers['Referer'] = "https://autovertaamo.traficom.fi/etusivu/index"
@@ -176,12 +177,15 @@ def print_technical(bot, trigger):
     result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('transmission')} {techdata.get('drivetype')} ({techdata.get('enginecode')}).{emissionspart}{masspart} Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
     bot.say(result)
 
+    ad_links = []
     nettiauto_url = get_nettix_link(bot, licenseplate)
     tori_url = get_tori_link(licenseplate)
     if nettiauto_url:
-        bot.say(f"On muuten myynnissä: {nettiauto_url}")
+        ad_links.append(nettiauto_url)
     if tori_url:
-        bot.say(f"On muuten myynnissä: {tori_url}")
+        ad_links.append(tori_url)
+    if ad_links:
+        bot.say(f"On muuten myynnissä: {' ja '.join(ad_links)}")
 
 
 if __name__ == "__main__":
