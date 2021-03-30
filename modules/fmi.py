@@ -71,7 +71,7 @@ def get_fmi_data(place: str) -> {}:
     res = requests.get(FMI_URL.format(query_id=forecast_query, place=place, starttime=starttime))
     forecast_soup = BeautifulSoup(res.text, features='lxml')
 
-    result['timestamp'] = datetime.strptime(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:time')[-1].text, "%Y-%m-%dT%H:%M:%S+02:00")
+    result['timestamp'] = datetime.fromisoformat(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:time')[-1].text)
     result['place'] = observations_soup.find('gml:name').text
     result['temperature'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:value')[-1].text
     result['winddirection'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-wd_10min'}).find_all('wml2:value')[-1].text)
@@ -83,7 +83,7 @@ def get_fmi_data(place: str) -> {}:
     result['rainfall'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-r_1h'}).find_all('wml2:value')[-1].text if not "NaN" else 0
     result['snow'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-snow_aws'}).find_all('wml2:value')[-1].text)
 
-    timestamp = str((result['timestamp'] + timedelta(days=1)).strftime('%Y-%m-%dT15:00:00+02:00'))
+    timestamp = (result['timestamp'] + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0).isoformat()
     result['forecasttemp'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-Temperature'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text)
     result['forecastweather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text))
     return result
