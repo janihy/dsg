@@ -81,9 +81,15 @@ def get_now_playing(bot, nick, spotify):
     # TODO: what if the user is not listening at all? spotify api returns "204 no content"
     item = res.get('item')
 
-    # TODO: sometimes there are more than one artist which we would like to display
+    artists = [artist.get('name') for artist in item.get('artists', [{}])]
+
+    if len(artists) > 1:
+        artist_str = f'{", ".join(artists[:-1])} & {artists[-1]}'
+    else:
+        artist_str = artists[0]
+
     np = {
-        'artist': item.get('artists', [{}])[0].get('name'),
+        'artist': artist_str,
         'title': item.get('name'),
         'uri': item.get('uri'),
         'currently_playing': res.get('is_playing')
