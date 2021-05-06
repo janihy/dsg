@@ -84,7 +84,7 @@ def get_emissions(licenseplate: str, rawresponse: bool = False) -> Optional[dict
     soup = BeautifulSoup(req.text, features="lxml")
     try:
         tax_elem = soup.find(text=re.compile('Vuotuinen ajoneuvovero'))
-        emissionsdata['yearlytax'] = tax_elem.parent.find('h2').contents[0].strip()
+        emissionsdata['yearlytax'] = tax_elem.parent.find('h3').contents[0].strip()
         co2_elem = soup.find(text=re.compile('Esimerkkiauton CO'))
         emissionsdata['co2'] = co2_elem.parent.find('strong').contents[0].strip()
         consumption_elem = soup.find(text=re.compile('Polttoaineenkulutus'))
