@@ -16,6 +16,7 @@ import re
 import dns.resolver
 import ipaddress
 import requests
+import json
 from urllib3.exceptions import LocationValueError
 
 from sopel import __version__, module, tools
@@ -58,6 +59,8 @@ class UrlSection(StaticSection):
     enable_dns_resolution = ValidatedAttribute(
         'enable_dns_resolution', bool, default=False)
     """Enable DNS resolution for all domains to validate if there are RFC1918 resolutions"""
+    youtube_apikey = ValidatedAttribute(
+        'youtube_apikey', default='')
 
 
 def configure(config):
@@ -92,6 +95,10 @@ def configure(config):
     config.url.configure_setting(
         'enable_dns_resolution',
         'Enable DNS resolution for all domains to validate if there are RFC1918 resolutions?'
+    )
+    config.url.configure_setting(
+        'youtube_apikey',
+        'Enter Youtube Data API v3 key'
     )
 
 
@@ -191,7 +198,18 @@ def title_auto(bot, trigger):
             message += ' ( %s )' % tinyurl
         # Guard against responding to other instances of this bot.
         if message != trigger:
-            bot.say(message)
+            youtube_match = re.match(r"https:\/\/(?:www.)?youtu.+\/(?:watch\?v=)?([a-zA-Z0-9]+)", url)
+            youtube_apikey = bot.config.url.youtube_apikey
+            if youtube_apikey and youtube_match:
+                params = {
+                    "part": "snippet",
+                    "id": youtube_match.group(1),
+                    "key": youtube_apikey
+                }
+                res = requests.get("https://youtube.googleapis.com/youtube/v3/videos", params=params).json()
+                bot.say(res.get('items', [{}])[0].get('snippet', {}).get('title'))
+            else:
+                bot.say(message)
             bot.memory['last_seen_url'][trigger.sender] = url
 
 
