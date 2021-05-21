@@ -17,8 +17,8 @@ import dns.resolver
 import ipaddress
 import requests
 import json
+import datetime
 from urllib3.exceptions import LocationValueError
-
 from sopel import __version__, module, tools
 from sopel.config.types import ListAttribute, StaticSection, ValidatedAttribute
 from sopel.tools import web
@@ -174,6 +174,16 @@ def title_command(bot, trigger):
         bot.memory['last_seen_url'][trigger.sender] = url
 
 
+# TODO: move these to a nettix api module as this functionality is duplicate from rekisterihaku.py
+# bad bad bad
+def refresh_nettix_token(bot) -> bool:
+    res = requests.post('https://auth.nettix.fi/oauth2/token', data={'grant_type': 'client_credentials'})
+    token = json.loads(res.text)
+    bot.memory['nettix_token']['access_token'] = token.get('access_token', '')
+    bot.memory['nettix_token']['expires_in'] = datetime.datetime.now() + datetime.timedelta(seconds=token.get('expires_in', ''))
+    return res.status_code == 200
+
+
 @module.rule(r'(?u).*(https?://\S+).*')
 def title_auto(bot, trigger):
     """
@@ -199,6 +209,7 @@ def title_auto(bot, trigger):
         # Guard against responding to other instances of this bot.
         if message != trigger:
             youtube_match = re.match(r"https:\/\/(?:www.)?youtu.+\/(?:watch\?v=)?([a-zA-Z0-9]+)", url)
+            nettix_match = re.match(r"https?:\/\/(?:www.)?nettiauto\.com\/[a-z0-9\-/]+\/([0-9]+)", url)
             youtube_apikey = bot.config.url.youtube_apikey
             if youtube_apikey and youtube_match:
                 params = {
@@ -208,6 +219,23 @@ def title_auto(bot, trigger):
                 }
                 res = requests.get("https://youtube.googleapis.com/youtube/v3/videos", params=params).json()
                 bot.say(res.get('items', [{}])[0].get('snippet', {}).get('title'))
+            elif nettix_match:
+                nettix_id = nettix_match.group(1)
+                if bot.memory['nettix_token'].get('expires_in', datetime.datetime.now()) <= datetime.datetime.now():
+                    if not refresh_nettix_token(bot):
+                        bot.say("oops, nettix api broken")
+
+                headers = {
+                    "Accept": "application/json",
+                    "X-Access-Token": bot.memory['nettix_token'].get('access_token')
+                }
+
+                res = requests.get(f'https://api.nettix.fi/rest/car/ad/{nettix_id}', headers=headers)
+                nettix_ad = json.loads(res.text)
+                if nettix_ad:
+                    nettix_output = f'{nettix_ad.get("make").get("name")} {nettix_ad.get("model").get("name")} {nettix_ad.get("modelTypeName")} - {nettix_ad.get("price")} €, {nettix_ad.get("kilometers")/1000:.0f} tkm'
+                    bot.say(nettix_output)
+
             else:
                 bot.say(message)
             bot.memory['last_seen_url'][trigger.sender] = url
