@@ -141,7 +141,7 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         'power': motonet_info.get('teho_kw') or biltema_info.get('powerKw'),
         'displacement': motonet_info.get('iskutilavuus'),
         'cylindercount': motonet_info.get('sylinterimaara'),
-        'fueltype': motonet_info.get('polttoaine', '').lower(),
+        'fueltype': motonet_info.get('polttoaine', '').lower() if 'polttoaine' in motonet_info else data.get('polttoaine').lower(),
         'drivetype': data.get('vetotapa', '').lower(),
         'transmission': 'automaatti' if biltema_info.get('gearBox', '').lower() == 'automaattinen' else 'manuaali',
         'enginecode': motonet_info.get('moottorikoodit', '').replace(' ', '') or biltema_info.get('engineCode'),
