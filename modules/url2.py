@@ -19,6 +19,7 @@ import requests
 import json
 import datetime
 from urllib3.exceptions import LocationValueError
+from typing import Optional
 from sopel import __version__, module, tools
 from sopel.config.types import ListAttribute, StaticSection, ValidatedAttribute
 from sopel.tools import web
@@ -208,7 +209,7 @@ def title_auto(bot, trigger):
             message += ' ( %s )' % tinyurl
         # Guard against responding to other instances of this bot.
         if message != trigger:
-            youtube_match = re.match(r"https:\/\/(?:www.)?youtu.+\/(?:watch\?v=)?([a-zA-Z0-9]+)", url)
+            youtube_match = re.match(r"https:\/\/(?:www.)?youtu.+\/(?:watch\?v=)?([a-zA-Z0-9_-]+)(?:\?t=([0-9]+))?", url)
             nettix_match = re.match(r"https?:\/\/(?:www.)?nettiauto\.com\/[a-z0-9\-/]+\/([0-9]+)", url)
             youtube_apikey = bot.config.url.youtube_apikey
             if youtube_apikey and youtube_match:
@@ -218,7 +219,16 @@ def title_auto(bot, trigger):
                     "key": youtube_apikey
                 }
                 res = requests.get("https://youtube.googleapis.com/youtube/v3/videos", params=params).json()
-                bot.say(res.get('items', [{}])[0].get('snippet', {}).get('title'))
+                try:
+                    snippet = res.get('items', [{}])[0].get('snippet', {})
+                except Exception:
+                    bot.say(f"Ei oo sellasta kun {youtube_match.group(1)}")
+                    return
+                msg = f"{snippet.get('channelTitle')} - {snippet.get('title')}"
+                if youtube_match.group(2):
+                    m, s = divmod(int(youtube_match.group(2)), 60)
+                    msg += f" (@{m}:{s:0>2})"
+                bot.say(msg)
             elif nettix_match:
                 nettix_id = nettix_match.group(1)
                 if bot.memory['nettix_token'].get('expires_in', datetime.datetime.now()) <= datetime.datetime.now():
