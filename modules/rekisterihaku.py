@@ -133,6 +133,30 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         # we can return and go home, most probably there was no data available
         return None
 
+    params = {
+        "vin": data.get('valmistenumero'),
+        "omamassa": biltema_info.get('weightKg'),
+        "kayttoonottopvm": biltema_info.get('registrationDate')
+    }
+    req = requests.post("http://localhost:8000", json=params, timeout=5)
+    try:
+        dsg_data = req.json()
+        count = len(dsg_data)
+        if count == 1:
+            dsg_data = dsg_data[0]
+            dsg_data['count'] = 1
+        else:
+            dsg_data = {}
+            dsg_data['count'] = count
+    except Exception as ex:
+        dsg_data = {}
+        dsg_data['exception'] = repr(ex)
+        dsg_data['count'] = 0
+
+    if rawresponse:
+        print(json.dumps(params))
+        print(json.dumps(dsg_data))
+
     techdata = {
         'manufacturer': motonet_info.get('valmistaja', ""),
         'model': motonet_info.get('malli', "") or biltema_info.get('nameOfTheCar'),
@@ -141,7 +165,7 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         'power': motonet_info.get('teho_kw') or biltema_info.get('powerKw'),
         'displacement': motonet_info.get('iskutilavuus'),
         'cylindercount': motonet_info.get('sylinterimaara'),
-        'fueltype': motonet_info.get('polttoaine', '').lower() if 'polttoaine' in motonet_info else data.get('polttoaine').lower(),
+        'fueltype': motonet_info.get('polttoaine', '').lower() if motonet_info.get('polttoaine', '') is not None else data.get('polttoaine').lower(),
         'drivetype': data.get('vetotapa', '').lower(),
         'transmission': 'automaatti' if biltema_info.get('gearBox', '').lower() == 'automaattinen' else 'manuaali',
         'enginecode': motonet_info.get('moottorikoodit', '').replace(' ', '') or biltema_info.get('engineCode'),
@@ -150,7 +174,12 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         'length': biltema_info.get('lenght'),
         'registrationdate': firstreg,
         'vin': data.get('valmistenumero') or biltema_info.get('chassieNumber'),
-        'suomiauto': True if data.get('maahantuotu') is None else False and biltema_info.get('imported') == 'false'
+        'suomiauto': True if data.get('maahantuotu') is None else False and biltema_info.get('imported') == 'false',
+        'co2': dsg_data.get('Co2'),
+        'location': dsg_data.get('kunta_fi'),
+        'color': dsg_data.get('vari_fi'),
+        'mileage': dsg_data.get('matkamittarilukema'),
+        'dsg_data_count': dsg_data.get('count', 0)
     }
 
     return techdata
@@ -169,13 +198,20 @@ def print_technical(bot, trigger) -> None:
         emissionsdata = get_emissions(licenseplate)
         if emissionsdata is not None:
             emissionspart = f" Ajoneuvovero {emissionsdata.get('yearlytax')}, CO² {emissionsdata.get('co2')}, kulutus {'/'.join(emissionsdata.get('consumptions'))} l/100 km."
+        if techdata.get('co2'):
+            emissionspart = f" Ajoneuvoverolaskuri vielä tekemättä, CO² {techdata.get('co2')} g/km."
         else:
             emissionspart = " Ei päästö- tai verotietoja."
+
         if techdata.get('weight'):
             masspart = f" Oma/kokonaismassa {techdata.get('weight')}/{techdata.get('maxweight')} kg, pituus {techdata.get('length')} mm."
         else:
             masspart = ""
-        result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('transmission')} {techdata.get('drivetype')} ({techdata.get('enginecode')}).{emissionspart}{masspart} Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}"
+        result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('transmission')} {techdata.get('drivetype')} ({techdata.get('enginecode')}).{emissionspart}{masspart} Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}."
+        if techdata.get('dsg_data_count') == 1:
+            result += f" Väri {techdata.get('color').lower()} ja koti {techdata.get('location')}. Ajettu {techdata.get('mileage')} km."
+        else:
+            result += f" Tragicomin datassa {techdata.get('dsg_data_count')} samanlaista autoa."
         bot.say(result)
     else:
         bot.say(f"{licenseplate.upper()}: Varmaan joku romu mihin ei saa enää ees varaosia :-(")
