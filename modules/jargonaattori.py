@@ -5,6 +5,7 @@
 """
 
 from sopel.module import rule
+from sopel.tools import Identifier
 import random
 
 
@@ -479,7 +480,7 @@ def jargonoi_kommentti(names: list) -> str:
     return f"{random.choice(comments)} {random.choice(names)}!"
 
 
-@rule(r'.jargonoi(?: (titteli|kommentti))?')
+@rule(r'.jargonoi(?: (titteli|kommentti|users))?')
 def jargonoi(bot, trigger) -> None:
     mode = trigger.group(1) or 'kommentti'
     names = [user for user in bot.users if user != bot.nick]
@@ -487,3 +488,6 @@ def jargonoi(bot, trigger) -> None:
         bot.say(jargonoi_kommentti(names))
     if mode == "titteli":
         bot.say(jargonoi_titteli())
+    elif mode == "users":
+        names = [str(user) for user in bot.users if not bot.users.get(Identifier(str(user))).away and user != bot.nick]
+        # bot.say(' '.join(names))
