@@ -11,7 +11,7 @@ from decimal import Decimal
 import requests
 import json
 import datetime
-import tax
+from tax import *
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
 MOTONET_BASE = 'https://www.motonet.fi/'
@@ -83,25 +83,25 @@ def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: 
     if vehicletype != "henkiloauto":
         return None
 
-    if (mass <= 2500 and year < 2001) or (mass > 2500 and year < 2002):
+    if (int(mass) <= 2500 and int(year) < 2001) or (int(mass) > 2500 and int(year) < 2002):
         USE_CO2_TAX = False
     else:
         USE_CO2_TAX = True
 
     if USE_CO2_TAX:
         if nedc_co2:
-            basetax = tax.base_tax_from_co2("nedc", nedc_co2)
+            basetax = base_tax_from_co2("nedc", nedc_co2)
         elif wltp_co2:
-            basetax = tax.base_tax_from_co2("wltp", wltp_co2)
+            basetax = base_tax_from_co2("wltp", wltp_co2)
         else:
-            basetax = tax.base_tax_from_mass(mass) * 365
+            basetax = base_tax_from_mass(mass) * 365
     else:
-        basetax = tax.base_tax_from_mass(mass) * 365
+        basetax = base_tax_from_mass(mass) * 365
 
     yearlytax = {}
     yearlytax['base'] = basetax
     if fuel == "diesel":
-        yearlytax['fuel'] = round(tax.fuel_tax_from_mass(mass) * 365, 2)
+        yearlytax['fuel'] = round(fuel_tax_from_mass(mass) * 365, 2)
 
     return yearlytax
 
