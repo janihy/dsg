@@ -3,7 +3,7 @@
     made by tuplis 2021
 """
 
-from sopel.module import rule
+from sopel.plugin import rule
 import re
 
 strings = [

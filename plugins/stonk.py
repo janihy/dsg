@@ -3,7 +3,7 @@
     made by tuplis 2021
 """
 
-from sopel.module import commands
+from sopel.plugin import commands
 from sopel.formatting import color, colors
 from yfinance import Ticker
 

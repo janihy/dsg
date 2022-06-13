@@ -3,7 +3,7 @@
     made by tuplis 2021
 """
 
-from sopel import module, db
+from sopel import plugin, db
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
@@ -89,8 +89,8 @@ def get_fmi_data(place: str) -> {}:
     return result
 
 
-@module.commands('sää', 'saa', 'keli')
-@module.example(
+@plugin.commands('sää', 'saa', 'keli')
+@plugin.example(
     '!sää Espoo',
     'sää espoo',
     online=True)

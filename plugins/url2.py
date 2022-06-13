@@ -20,7 +20,7 @@ import json
 import datetime
 from urllib3.exceptions import LocationValueError
 from typing import Optional
-from sopel import __version__, module, tools
+from sopel import __version__, plugin, tools
 from sopel.config.types import ListAttribute, StaticSection, ValidatedAttribute
 from sopel.tools import web
 
@@ -144,8 +144,8 @@ def shutdown(bot):
             pass
 
 
-@module.commands('title')
-@module.example(
+@plugin.commands('title')
+@plugin.example(
     '.title https://www.google.com',
     '[ Google ] - www.google.com',
     online=True)
@@ -186,7 +186,7 @@ def refresh_nettix_token(bot) -> bool:
     return res.status_code == 200
 
 
-@module.rule(r'(?u).*(https?://\S+).*')
+@plugin.rule(r'(?u).*(https?://\S+).*')
 def title_auto(bot, trigger):
     """
     Automatically show titles for URLs. For shortened URLs/redirects, find

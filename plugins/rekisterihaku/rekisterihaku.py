@@ -3,7 +3,7 @@
     made by tuplis 2021
 """
 
-from sopel import module, tools
+from sopel import plugin, tools
 from bs4 import BeautifulSoup
 from typing import Dict, Optional
 from decimal import Decimal
@@ -196,9 +196,9 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
     return techdata
 
 
-@module.commands('rekisteri')
-@module.commands('rekkari')
-@module.example(
+@plugin.commands('rekisteri')
+@plugin.commands('rekkari')
+@plugin.example(
     '!rekisteri bey-830',
     'BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg, pituus 4480 mm. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto',
     online=True)

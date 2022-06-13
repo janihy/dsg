@@ -4,7 +4,7 @@
     thank you http://jargonaattori.fi/
 """
 
-from sopel.module import rule
+from sopel.plugin import rule
 from sopel.tools import Identifier
 import random
 

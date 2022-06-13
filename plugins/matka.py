@@ -5,16 +5,16 @@
 
 from bs4 import BeautifulSoup
 
-import sopel.module
+import sopel.plugin
 import math
 import requests
 
 BASEURL = 'https://www.etaisyys.com/etaisyys'
 
 
-@sopel.module.rule(r'^.matka (\w+) (\w+)(?: (\d+))?')
-@sopel.module.example('!matka Helsinki Riihimäki 100')
-def module(bot, trigger):
+@sopel.plugin.rule(r'^.matka (\w+) (\w+)(?: (\d+))?')
+@sopel.plugin.example('!matka Helsinki Riihimäki 100')
+def matka(bot, trigger):
     start = trigger.group(1)
     end = trigger.group(2)
     speed = float(trigger.group(3) or 80)

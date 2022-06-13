@@ -15,8 +15,8 @@ import re
 
 import requests
 
-from sopel.modules.search import duck_search
-from sopel.module import commands, url
+from sopel.plugins.search import duck_search
+from sopel.plugin import commands, url
 
 
 ignored_sites = [

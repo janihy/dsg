@@ -4,7 +4,7 @@
 """
 
 from sopel import db
-from sopel.module import require_privmsg, rule
+from sopel.plugin import require_privmsg, rule
 from sopel.config.types import StaticSection, ValidatedAttribute
 from base64 import b64encode
 from datetime import datetime, timedelta
