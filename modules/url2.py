@@ -30,7 +30,8 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-USER_AGENT = 'Sopel/{} (https://sopel.chat)'.format(__version__)
+#USER_AGENT = 'Sopel/{} (https://sopel.chat)'.format(__version__)
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.129 Safari/537.36"
 default_headers = {'User-Agent': USER_AGENT}
 # These are used to clean up the title tag before actually parsing it. Not the
 # world's best way to do this, but it'll do for now.
