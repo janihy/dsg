@@ -15,7 +15,7 @@ import re
 
 import requests
 
-from sopel.plugins.search import duck_search
+from sopel.modules.search import duck_search
 from sopel.plugin import commands, url
 
 
