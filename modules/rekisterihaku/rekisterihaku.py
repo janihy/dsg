@@ -6,16 +6,17 @@
 from sopel import module, tools
 from bs4 import BeautifulSoup
 from typing import Dict, Optional
+from decimal import Decimal
 
 import requests
 import json
 import datetime
-import re
+import tax
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
 MOTONET_BASE = 'https://www.motonet.fi/'
 MOTONET_ENDPOINT = MOTONET_BASE + 'fi/jsoncustomervehicle'
-TRAFI_ENDPOINT = "https://autovertaamo.traficom.fi/trafienergiamerkki/{licenseplate}"
+DSG_ENDPOINT = "http://localhost:8000"
 DEFAULT_HEADERS: Dict[str, str] = {}
 
 
@@ -76,23 +77,33 @@ def get_tori_link(licenseplate: str) -> Optional[str]:
     return link
 
 
-def get_emissions(licenseplate: str, rawresponse: bool = False) -> Optional[dict]:
-    emissionsdata = {}
-    headers = DEFAULT_HEADERS
-    headers['Referer'] = "https://autovertaamo.traficom.fi/etusivu/index"
-    req = requests.get(TRAFI_ENDPOINT.format(licenseplate=licenseplate), headers=headers)
-    soup = BeautifulSoup(req.text, features="lxml")
-    try:
-        tax_elem = soup.find(text=re.compile('Vuotuinen ajoneuvovero'))
-        emissionsdata['yearlytax'] = tax_elem.parent.find('h3').contents[0].strip()
-        co2_elem = soup.find(text=re.compile('Esimerkkiauton CO'))
-        emissionsdata['co2'] = co2_elem.parent.find('strong').contents[0].strip()
-        consumption_elem = soup.find(text=re.compile('Polttoaineenkulutus'))
-        emissionsdata['consumptions'] = [consumption.contents[0].strip() for consumption in consumption_elem.parent.parent.findAll('span')]
-    except Exception:
+def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: int = 0, vehicletype: str = "henkiloauto", rawresponse: bool = False) -> Optional[Decimal]:
+    # https://www.traficom.fi/fi/liikenne/tieliikenne/ajoneuvoveron-rakenne-ja-maara
+    # we only support henkilöautos
+    if vehicletype != "henkiloauto":
         return None
 
-    return emissionsdata
+    if (mass <= 2500 and year < 2001) or (mass > 2500 and year < 2002):
+        USE_CO2_TAX = False
+    else:
+        USE_CO2_TAX = True
+
+    if USE_CO2_TAX:
+        if nedc_co2:
+            basetax = tax.base_tax_from_co2("nedc", nedc_co2)
+        elif wltp_co2:
+            basetax = tax.base_tax_from_co2("wltp", wltp_co2)
+        else:
+            basetax = tax.base_tax_from_mass(mass) * 365
+    else:
+        basetax = tax.base_tax_from_mass(mass) * 365
+
+    yearlytax = {}
+    yearlytax['base'] = basetax
+    if fuel == "diesel":
+        yearlytax['fuel'] = round(tax.fuel_tax_from_mass(mass) * 365, 2)
+
+    return yearlytax
 
 
 def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict]:
@@ -138,8 +149,8 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "omamassa": biltema_info.get('weightKg'),
         "kayttoonottopvm": biltema_info.get('registrationDate')
     }
-    req = requests.post("http://localhost:8000", json=params, timeout=5)
     try:
+        req = requests.post(DSG_ENDPOINT, json=params, timeout=5)
         dsg_data = req.json()
         count = len(dsg_data)
         if count == 1:
@@ -195,23 +206,30 @@ def print_technical(bot, trigger) -> None:
     licenseplate = trigger.group(2)
     techdata = get_technical(licenseplate)
     if techdata is not None:
-        emissionsdata = get_emissions(licenseplate)
-        if emissionsdata is not None:
-            emissionspart = f" Ajoneuvovero {emissionsdata.get('yearlytax')}, CO² {emissionsdata.get('co2')}, kulutus {'/'.join(emissionsdata.get('consumptions'))} l/100 km."
-        if techdata.get('co2'):
-            emissionspart = f" Ajoneuvoverolaskuri vielä tekemättä, CO² {techdata.get('co2')} g/km."
+        taxdata = calculate_tax(techdata.get('maxweight'), techdata.get('year'), techdata.get('fueltype'), techdata.get('nedc_co2'))
+        emissionspart = ""
+        if taxdata is not None:
+            if taxdata['fuel']:
+                emissionspart = f" Ajoneuvovero {taxdata.get('fuel')} + {taxdata.get('base')} € vuodessa"
+            else:
+                emissionspart = f" Ajoneuvovero {taxdata.get('base')} € vuodessa"
+            if techdata.get('co2'):
+                emissionspart += f", CO² {techdata.get('co2')} g/km."
+            else:
+                emissionspart = ", ei päästöjä."
         else:
-            emissionspart = " Ei päästö- tai verotietoja."
+            emissionspart = " Ei päästötietoja."
 
         if techdata.get('weight'):
             masspart = f" Oma/kokonaismassa {techdata.get('weight')}/{techdata.get('maxweight')} kg, pituus {techdata.get('length')} mm."
         else:
             masspart = ""
         result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {techdata.get('displacement')} cm³ {techdata.get('cylindercount')}-syl {techdata.get('fueltype')} {techdata.get('transmission')} {techdata.get('drivetype')} ({techdata.get('enginecode')}).{emissionspart}{masspart} Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}."
+
         if techdata.get('dsg_data_count') == 1:
             result += f" Väri {techdata.get('color').lower()} ja koti {techdata.get('location')}. Ajettu {techdata.get('mileage')} km."
-        else:
-            result += f" Tragicomin datassa {techdata.get('dsg_data_count')} samanlaista autoa."
+        elif techdata.get('dsg_data_count') > 1:
+            result += f" Traficomin datassa {techdata.get('dsg_data_count')} samanlaista autoa."
         bot.say(result)
     else:
         bot.say(f"{licenseplate.upper()}: Varmaan joku romu mihin ei saa enää ees varaosia :-(")
@@ -237,6 +255,6 @@ if __name__ == "__main__":
     except Exception:
         pass
 
-    # print(get_emissions(licenseplate="bey-830"))
+    # print(get_technical(licenseplate="oxg-353", rawresponse=True))
     # print(get_emissions(licenseplate="gfs-10"))
     # print(get_nettix_token())
