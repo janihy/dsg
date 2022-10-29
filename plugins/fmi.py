@@ -83,9 +83,12 @@ def get_fmi_data(place: str) -> {}:
     result['rainfall'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-r_1h'}).find_all('wml2:value')[-1].text if not "NaN" else 0
     result['snow'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-snow_aws'}).find_all('wml2:value')[-1].text)
 
-    timestamp = (result['timestamp'] + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0).isoformat()
-    result['forecasttemp'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-Temperature'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text)
-    result['forecastweather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text))
+    try:
+        timestamp = (result['timestamp'] + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0).isoformat()
+        result['forecasttemp'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-Temperature'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text)
+        result['forecastweather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text))
+    except Exception:
+        pass
     return result
 
 
@@ -112,13 +115,15 @@ def print_weather(bot, trigger):
     weather['winddirection'] = weather['winddirection']
     weather['visibility'] = weather['visibility'] / 1000
     weather['weather'] = WEATHERCODE_MAP[weather['weather']]
-    weather['forecastweather'] = WEATHERCODE_MAP[weather['forecastweather']]
     try:
         weather['windfrom'] = DIRECTION_MAP[int((weather['winddirection'] + 22.5) / 45) % 8]
     except Exception:
         weather['windfrom'] = ""
 
-    msg = "{place} {temperature}°C ({timestamp}), {weather}. Ilmankosteus {rh:.0f} %, sademäärä (<1h): {rainfall} mm. Tuulee {windspeed} m/s {windfrom} ({winddirection:.0f}°). Näkyvyys {visibility:.0f} km, pilvisyys {clouds:.0f}/8. Lumensyvyys {snow:.0f} cm. Huomispäiväksi luvattu {forecasttemp:.1f}°C, {forecastweather}.".format(**weather)
+    msg = "{place} {temperature}°C ({timestamp}), {weather}. Ilmankosteus {rh:.0f} %, sademäärä (<1h): {rainfall} mm. Tuulee {windspeed} m/s {windfrom} ({winddirection:.0f}°). Näkyvyys {visibility:.0f} km, pilvisyys {clouds:.0f}/8. Lumensyvyys {snow:.0f} cm.".format(**weather)
+    if "forecasttemp" in weather:
+        weather['forecastweather'] = WEATHERCODE_MAP[weather['forecastweather']]
+        msg += " Huomispäiväksi luvattu {forecasttemp:.1f}°C, {forecastweather}.".format(**weather)
     bot.say(msg)
 
 
