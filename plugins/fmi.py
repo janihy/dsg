@@ -74,21 +74,25 @@ def get_fmi_data(place: str) -> dict:
     result['forecast'] = {}
 
     res = requests.get(FMI_URL.format(query_id=observations_query, place=place, starttime=starttime), timeout=5)
-    res.raise_for_status()
-    observations_soup = BeautifulSoup(res.text, features='lxml')
 
-    result['timestamp'] = datetime.fromisoformat(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:time')[-1].text)
-    result['place'] = observations_soup.find('gml:name').text
-    result['temperature'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:value')[-1].text)
-    result['winddirection'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-wd_10min'}).find_all('wml2:value')[-1].text)
-    result['windspeed'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-ws_10min'}).find_all('wml2:value')[-1].text)
-    result['rh'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-rh'}).find_all('wml2:value')[-1].text)
-    result['visibility'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-vis'}).find_all('wml2:value')[-1].text
-    result['visibility'] = float(result['visibility']) if result['visibility'] != "NaN" else -1
-    result['clouds'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-n_man'}).find_all('wml2:value')[-1].text
-    result['clouds'] = float(result['clouds']) if result['clouds'] != "NaN" else -1
-    result['rainfall'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-r_1h'}).find_all('wml2:value')[-1].text if not "NaN" else 0
-    result['snow'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-snow_aws'}).find_all('wml2:value')[-1].text) if not "NaN" else -1
+    try:
+        res.raise_for_status()
+        observations_soup = BeautifulSoup(res.text, features='lxml')
+        result['timestamp'] = datetime.fromisoformat(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:time')[-1].text)
+        result['place'] = observations_soup.find('gml:name').text
+        result['temperature'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:value')[-1].text)
+        result['winddirection'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-wd_10min'}).find_all('wml2:value')[-1].text
+        result['winddirection'] = float(result['winddirection']) if result['winddirection'] != "NaN" else -1
+        result['windspeed'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-ws_10min'}).find_all('wml2:value')[-1].text)
+        result['rh'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-rh'}).find_all('wml2:value')[-1].text)
+        result['visibility'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-vis'}).find_all('wml2:value')[-1].text
+        result['visibility'] = float(result['visibility']) if result['visibility'] != "NaN" else -1
+        result['clouds'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-n_man'}).find_all('wml2:value')[-1].text
+        result['clouds'] = float(result['clouds']) if result['clouds'] != "NaN" else -1
+        result['rainfall'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-r_1h'}).find_all('wml2:value')[-1].text
+        result['snow'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-snow_aws'}).find_all('wml2:value')[-1].text) if not "NaN" else -1
+    except Exception:
+        return None
 
     try:
         res = requests.get(FMI_URL.format(query_id=forecast_query, place=place, starttime=starttime), timeout=5)
@@ -128,6 +132,10 @@ def print_weather(bot, trigger):
         state.set_nick_value(trigger.nick, 'fmi_last_location', location)
 
     weather = get_fmi_data(location)
+    if weather is None:
+        bot.say("Paikkaa ei löydy tai jotain t: fmi")
+        return
+
     weather['temperature'] = round(weather['temperature'], 2)
     weather['timestamp'] = weather['timestamp'].strftime('%H:%M')
     weather['winddirection'] = round(weather['winddirection'])
@@ -138,7 +146,11 @@ def print_weather(bot, trigger):
     except Exception:
         weather['windfrom'] = ""
 
-    msg = "{place} {temperature:n}°C ({timestamp}), {weather}. Ilmankosteus {rh:n} %, sademäärä (<1h): {rainfall} mm. Tuulee {windspeed:n} m/s {windfrom} ({winddirection:n}°).".format(**weather)
+    msg = "{place} {temperature:n}°C ({timestamp}), {weather}. Ilmankosteus {rh:n} %, sademäärä (<1h): {rainfall} mm.".format(**weather)
+    if "windspeed" in weather and weather['windspeed'] > -1:
+        msg += " Tuulee {windspeed:n} m/s {windfrom} ({winddirection:n}°).".format(**weather)
+    else:
+        msg += " Asemalta puuttuu tuuli."
     if "visibility" in weather and weather['visibility'] > 0:
         msg += " Näkyvyys {visibility} km".format(**weather)
     else:
