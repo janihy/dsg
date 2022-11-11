@@ -128,18 +128,19 @@ def print_weather(bot, trigger):
         state.set_nick_value(trigger.nick, 'fmi_last_location', location)
 
     weather = get_fmi_data(location)
+    weather['temperature'] = round(weather['temperature'], 2)
     weather['timestamp'] = weather['timestamp'].strftime('%H:%M')
-    weather['winddirection'] = weather['winddirection']
-    weather['visibility'] = weather['visibility'] / 1000
+    weather['winddirection'] = round(weather['winddirection'])
+    weather['visibility'] = round(weather['visibility'] / 1000)
     weather['weather'] = WEATHERCODE_MAP[weather['weather']]
     try:
         weather['windfrom'] = DIRECTION_MAP[int((weather['winddirection'] + 22.5) / 45) % 8]
     except Exception:
         weather['windfrom'] = ""
 
-    msg = "{place} {temperature:.2n}°C ({timestamp}), {weather}. Ilmankosteus {rh:n} %, sademäärä (<1h): {rainfall} mm. Tuulee {windspeed:.2n} m/s {windfrom} ({winddirection:.0f}°).".format(**weather)
+    msg = "{place} {temperature:n}°C ({timestamp}), {weather}. Ilmankosteus {rh:n} %, sademäärä (<1h): {rainfall} mm. Tuulee {windspeed:n} m/s {windfrom} ({winddirection:n}°).".format(**weather)
     if "visibility" in weather and weather['visibility'] > 0:
-        msg += " Näkyvyys {visibility:.0n} km".format(**weather)
+        msg += " Näkyvyys {visibility} km".format(**weather)
     else:
         msg += " Asemalta puuttuu näkyvyys"
     if "clouds" in weather and weather['clouds'] >= 0:
@@ -153,7 +154,9 @@ def print_weather(bot, trigger):
     forecast = weather['forecast']
     if "temp" in forecast:
         # weather['forecastweather'] = WEATHERCODE_MAP[weather['forecastweather']]
-        msg += " Huomispäiväksi luvattu {temp:.1n}°C, tuulee {windspeed:.1n} m/s.".format(**forecast)
+        forecast['temp'] = round(forecast['temp'])
+        forecast['windspeed'] = round(forecast['windspeed'])
+        msg += " Huomispäiväksi luvattu {temp:n}°C, tuulee {windspeed:n} m/s.".format(**forecast)
         if forecast['cloudcoverage'] > 80:
             msg += " Pilvistä."
 
