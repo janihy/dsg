@@ -9,8 +9,10 @@
 # API     https://data.fingrid.fi/fi/pages/api
 
 from sopel.plugin import commands
-from datetime import datetime
+from sopel.formatting import color, colors
+from datetime import datetime, timedelta
 from typing import Dict
+import json
 
 import requests
 
@@ -43,20 +45,63 @@ def build_output_msg(data) -> str:
     return msg
 
 
-def get_latest_prices() -> Dict[str,dict]:
+def get_latest_prices() -> Dict[str, dict]:
     now = datetime.now().astimezone()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow_start = today_start + timedelta(days=1)
+    tomorrow_end = tomorrow_start + timedelta(days=1)
     prices = requests.get(PRICES_ENDPOINT).json()
+    today_data = []
+    tomorrow_data = []
+
     for price in prices.get('prices'):
-        price['start'] = datetime.fromisoformat(price['startDate'].replace("Z", "+00:00"))
-        price['end'] = datetime.fromisoformat(price['endDate'].replace("Z", "+00:00"))
+        price['start'] = datetime.fromisoformat(price.pop('startDate').replace("Z", "+00:00"))
+        price['end'] = datetime.fromisoformat(price.pop('endDate').replace("Z", "+00:00"))
         if price['start'] < now < price['end']:
-            prices['current'] = price
+            prices['current'] = price.get('price')
+        if price['start'] >= today_start and price['end'] <= tomorrow_start:
+            today_data.append(price)
+        elif price['start'] >= tomorrow_start and price['end'] <= tomorrow_end:
+            tomorrow_data.append(price)
+
+    tomorrow_prices = [price.get('price') for price in tomorrow_data]
+    prices['tomorrow'] = {
+        'min': round(min(tomorrow_prices), 2),
+        'max': round(max(tomorrow_prices), 2),
+        'average': round(sum(tomorrow_prices) / len(tomorrow_prices), 2),
+        'prices': tomorrow_data
+    }
+
+    today_prices = [price.get('price') for price in today_data]
+    prices['today'] = {
+        'min': round(min(today_prices), 2),
+        'max': round(max(today_prices), 2),
+        'average': round(sum(today_prices) / len(today_prices), 2),
+        'prices': today_data
+    }
+
     return prices
 
 
 @commands('sähö', 'sähkö', 'pörssisähkö')
 def prices(bot, trigger):
-    bot.say(f"Pörssisähkö nyt {get_latest_prices().get('current').get('price')} snt/kWh")
+    prices = get_latest_prices()
+    if trigger.group(2) == "huomenna":
+        tomorrow = prices.get('tomorrow')
+        tomorrow_min = tomorrow.get('min')
+        tomorrow_max = tomorrow.get('max')
+        response = f"Börs huomenna: alin/ylin {tomorrow_min}/{tomorrow_max} ja keskihinta {tomorrow.get('average')} snt/kWh."
+        bot.say(response)
+    else:
+        current_price = prices.get('current')
+        today = prices.get('today', {})
+        today_average = today.get('average')
+        current_price_str = color(str(current_price), colors.GREEN) if current_price < today_average else color(str(current_price), colors.RED)
+        bot.say(f"Pörssisähkö nyt {current_price_str} snt/kWh. Päivän alin/ylin {today.get('min')}/{today.get('max')} ja keskihinta {round(today_average, 2)} snt/kWh.")
+
+        # hehz
+        if current_price >= 50:
+            bot.say("Gallis")
 
 
 @commands('tuotanto', 'jytkytys', 'jytkyttää')
@@ -73,3 +118,4 @@ def ol3(bot, trigger):
 if __name__ == '__main__':
     # print(get_latest_prices().get('current'))
     print(build_output_msg(get_current_output()))
+    print(json.dumps(get_latest_prices(), indent=2, default=str))
