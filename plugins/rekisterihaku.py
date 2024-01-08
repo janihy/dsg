@@ -988,6 +988,7 @@ def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: 
 
 
 def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict]:
+    client = requests.session()
     req = client.get(MOTONET_ENDPOINT.format(licenseplate=licenseplate))
     try:
         motonet_info = json.loads(req.text)
