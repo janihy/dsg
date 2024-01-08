@@ -13,10 +13,8 @@ import json
 import datetime
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
-MOTONET_BASE = 'https://www.motonet.fi/'
-MOTONET_ENDPOINT = MOTONET_BASE + 'fi/jsoncustomervehicle'
+MOTONET_ENDPOINT = 'https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI/{licenseplate}?locale=fi'
 DSG_ENDPOINT = "http://localhost:8000"
-DEFAULT_HEADERS: Dict[str, str] = {}
 
 NEDC_MAP = {
     0: 53.29,
@@ -990,26 +988,13 @@ def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: 
 
 
 def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict]:
-    client = requests.session()
-    req = client.get(MOTONET_BASE)
-    soup = BeautifulSoup(req.text, features="lxml")
-    csrftoken = soup.find('input', {'name': 'CSRFTOKEN'}).get('value')
-
-    payload = {
-        "rekisterimaa": "FI",
-        "-Rekisterinumerohaku": "true",
-        "rekisterinumero": licenseplate
-    }
-    headers = DEFAULT_HEADERS
-    headers['X-CSRF-TOKEN'] = csrftoken
-
-    req = client.post(MOTONET_ENDPOINT, data=payload, headers=headers)
-    data = json.loads(req.text)
-    if rawresponse:
-        print(json.dumps(data, indent=2))
-    if data is None:
-        data = {}
-    motonet_info = data.get('ajoneuvotiedot', [{}])[0]
+    req = client.get(MOTONET_ENDPOINT.format(licenseplate=licenseplate))
+    try:
+        motonet_info = json.loads(req.text)
+        if rawresponse:
+            print(json.dumps(motonet_info, indent=2))
+    except Exception:
+        motonet_info = {}
 
     req = client.get(BILTEMA_ENDPOINT.format(licenseplate=licenseplate))
     try:
@@ -1020,7 +1005,7 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         biltema_info = {}
 
     if motonet_info:
-        firstreg = datetime.datetime.strptime(data.get('ensirekisterointipvm'), '%Y-%m-%dT%H:%M:%SZ')
+        firstreg = datetime.datetime.strptime(motonet_info.get('registrationDate'), '%d.%m.%Y')
     elif biltema_info:
         firstreg = datetime.datetime.strptime(biltema_info.get('registrationDate'), '%Y%m%d')
     else:
@@ -1052,23 +1037,23 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         print(json.dumps(dsg_data))
 
     techdata = {
-        'manufacturer': motonet_info.get('valmistaja', ""),
-        'model': motonet_info.get('malli', "") or biltema_info.get('nameOfTheCar'),
-        'type': motonet_info.get('tyyppi', ""),
+        'manufacturer': motonet_info.get('manufacturerName', ""),
+        'model': motonet_info.get('model', "") or biltema_info.get('nameOfTheCar'),
+        'type': motonet_info.get('type', ""),
         'year': biltema_info.get('modelYear', None) or f'~{firstreg.year}',
-        'power': motonet_info.get('teho_kw') or biltema_info.get('powerKw'),
-        'displacement': motonet_info.get('iskutilavuus'),
-        'cylindercount': motonet_info.get('sylinterimaara'),
-        'fueltype': motonet_info.get('polttoaine', '').lower() if motonet_info.get('polttoaine', '') is not None else data.get('polttoaine').lower(),
-        'drivetype': data.get('vetotapa', '').lower(),
+        'power': motonet_info.get('powerKw') or biltema_info.get('powerKw'),
+        'displacement': motonet_info.get('displacement'),
+        'cylindercount': motonet_info.get('cylinders'),
+        'fueltype': motonet_info.get('fuel').lower() or biltema_info.get('fuelType').lower(),
+        'drivetype': biltema_info.get('impulsionType', '').lower(),
         'transmission': 'automaatti' if biltema_info.get('gearBox', '').lower() == 'automaattinen' else 'manuaali',
-        'enginecode': motonet_info.get('moottorikoodit', '').replace(' ', '') or biltema_info.get('engineCode'),
+        'enginecode': motonet_info.get('engineCode', '').replace(' ', '') or biltema_info.get('engineCode'),
         'weight': biltema_info.get('weightKg'),
         'maxweight': biltema_info.get('maxWeightKg'),
         'length': biltema_info.get('lenght'),
         'registrationdate': firstreg,
-        'vin': data.get('valmistenumero') or biltema_info.get('chassieNumber'),
-        'suomiauto': True if data.get('maahantuotu') is None else False and biltema_info.get('imported') == 'false',
+        'vin': motonet_info.get('VIN') or biltema_info.get('chassieNumber'),
+        'suomiauto': True if biltema_info.get('imported') == 'true' else False,
         'co2': dsg_data.get('Co2'),
         'location': dsg_data.get('kunta_fi'),
         'color': dsg_data.get('vari_fi'),
