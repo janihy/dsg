@@ -15,6 +15,7 @@ from typing import Dict
 import json
 
 import requests
+from bs4 import BeautifulSoup
 
 PRICES_ENDPOINT = "https://api.porssisahko.net/v1/latest-prices.json"
 FINGRID_ENDPOINT = "https://api.fingrid.fi/v1/variable/event/json"
@@ -83,6 +84,19 @@ def get_latest_prices() -> Dict[str, dict]:
     return prices
 
 
+def olkiluoto():
+    response = requests.get("https://toimiikoolkiluoto3.fi/")
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        status = soup.find('h1')
+        
+        if status:
+            return status.get_text()
+
+    return "I want to believe"
+
+
 @commands('sähö', 'sähkö', 'pörssisähkö')
 def prices(bot, trigger):
     prices = get_latest_prices()
@@ -112,7 +126,7 @@ def production(bot, trigger):
 
 @commands('ol3')
 def ol3(bot, trigger):
-    bot.say("I want to believe")
+    bot.say(olkiluoto())
 
 
 if __name__ == '__main__':
