@@ -65,33 +65,63 @@ def setup(bot):
     pass
 
 
+def convert_float(input):
+    if input == "NaN":
+        return -1
+    try:
+        output = float(input)
+    except Exception:
+        return -1
+
+    return output
+
+
 def get_fmi_data(place: str) -> dict:
     # https://en.ilmatieteenlaitos.fi/open-data-manual-fmi-wfs-services
+
+    # Real time weather observations from weather stations. Default set contains
+    # air temperatire, wind speed, gust speed, wind direction, relative
+    # humidity, dew point, one hour precipitation amount, precipitation
+    # intensity, snow depth, pressure reduced to sea level and visibility. By
+    # default, the data is returned from last 12 hour. At least one location
+    # parameter (geoid/place/fmisid/wmo/bbox) has to be given. The data is
+    # returned as a time value pair format.
     observations_query = "fmi::observations::weather::timevaluepair"
+
+    # The stored query can be used to fetch Harmonie surface level weather
+    # forecast in time value pair format. The model data covers the
+    # geographical area of Scandinavia. New forecast dataset will come
+    # available every 6 hours. Location need to be specified as place or geoid
+    # or latlon query parameters.
     forecast_query = "fmi::forecast::harmonie::surface::point::timevaluepair"
+
+    # starttime = (datetime.now(timezone.utc).replace(microsecond=0) - timedelta(hours=4)).isoformat()
+
+    # starttime = starttime.replace("+00:00", "Z")
     starttime = int((datetime.now() - timedelta(hours=1)).timestamp())
     result = {}
     result['forecast'] = {}
 
     res = requests.get(FMI_URL.format(query_id=observations_query, place=place, starttime=starttime), timeout=5)
-
     try:
         res.raise_for_status()
         observations_soup = BeautifulSoup(res.text, features='lxml')
         result['timestamp'] = datetime.fromisoformat(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:time')[-1].text)
         result['place'] = observations_soup.find('gml:name').text
-        result['temperature'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:value')[-1].text)
+        result['temperature'] = convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-t2m'}).find_all('wml2:value')[-1].text)
         result['winddirection'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-wd_10min'}).find_all('wml2:value')[-1].text
-        result['winddirection'] = float(result['winddirection']) if result['winddirection'] != "NaN" else -1
-        result['windspeed'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-ws_10min'}).find_all('wml2:value')[-1].text)
-        result['rh'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-rh'}).find_all('wml2:value')[-1].text)
+        result['winddirection'] = convert_float(result['winddirection'])
+        result['windspeed'] = convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-ws_10min'}).find_all('wml2:value')[-1].text)
+        result['rh'] = convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-rh'}).find_all('wml2:value')[-1].text)
         result['visibility'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-vis'}).find_all('wml2:value')[-1].text
-        result['visibility'] = float(result['visibility']) if result['visibility'] != "NaN" else -1
+        result['visibility'] = convert_float(result['visibility'])
         result['clouds'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-n_man'}).find_all('wml2:value')[-1].text
-        result['clouds'] = float(result['clouds']) if result['clouds'] != "NaN" else -1
-        result['rainfall'] = observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-r_1h'}).find_all('wml2:value')[-1].text
-        result['snow'] = float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-snow_aws'}).find_all('wml2:value')[-1].text) if not "NaN" else -1
-    except Exception:
+        result['clouds'] = convert_float(result['clouds'])
+        result['rainfall'] = convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-r_1h'}).find_all('wml2:value')[-1].text)
+        result['snow'] = convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-snow_aws'}).find_all('wml2:value')[-1].text)
+        result['weather'] = round(convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': 'obs-obs-1-1-wawa'}).find_all('wml2:value')[-1].text))
+    except Exception as e:
+        print(e)
         return None
 
     try:
@@ -101,14 +131,12 @@ def get_fmi_data(place: str) -> dict:
         # RIP WeatherSymbol3, does not exist in the harmonie forecast. Old Hirlam forecast was deprecated in 10/2022.
         # result['weather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find_all('wml2:value')[0].text)) if not "NaN" else -1
         # force it to -1 until we fix it
-        result['weather'] = -1
         timestamp = (result['timestamp'] + timedelta(days=1)).replace(hour=15, minute=0, second=0, microsecond=0).astimezone(pytz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         result['forecast']['temp'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-Temperature'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text)
         result['forecast']['windspeed'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WindSpeedMS'}).find_all('wml2:value')[-1].text)
         result['forecast']['cloudcoverage'] = float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-TotalCloudCover'}).find_all('wml2:value')[-1].text)
         # result['forecastweather'] = int(float(forecast_soup.find('wml2:measurementtimeseries', {'gml:id': 'mts-1-1-WeatherSymbol3'}).find('wml2:time', string=timestamp).find_next_sibling('wml2:value').text)) if not "NaN" else -1
     except Exception as e:
-        result['weather'] = -1
         result['error'] = e
     return result
 
@@ -140,7 +168,7 @@ def print_weather(bot, trigger):
     weather['timestamp'] = weather['timestamp'].strftime('%H:%M')
     weather['winddirection'] = round(weather['winddirection'])
     weather['visibility'] = round(weather['visibility'] / 1000)
-    weather['weather'] = WEATHERCODE_MAP[weather['weather']]
+    weather['weather'] = round(weather['weather'])
     try:
         weather['windfrom'] = DIRECTION_MAP[int((weather['winddirection'] + 22.5) / 45) % 8]
     except Exception:
@@ -178,4 +206,4 @@ def print_weather(bot, trigger):
 
 
 if __name__ == "__main__":
-    print(get_fmi_data("tampere"))
+    print(get_fmi_data("Espoo"))
