@@ -12,12 +12,8 @@ import yfinance
 def get_info(name: str, fast: bool = True) -> yfinance.scrapers.quote.InfoDictWrapper:
     ticker_object = yfinance.Ticker(name)
     try:
-        if fast:
-            info = ticker_object.fast_info
-            assert info.get("last_price")
-        else:
-            info = ticker_object.info
-            assert info.get("shortName")
+        info = ticker_object.info
+        assert info.get("shortName")
     except Exception:
         if name[-3:].lower() != ".he":
             if '.' in name:
@@ -54,9 +50,9 @@ def trigger(bot, trigger):
         return False
     try:
         if fast:
-            change = info.get('last_price') - info.get('previous_close')
-            changepercent = (change / info.get('previous_close'))
-            message = f'{ticker.upper()}: {info["last_price"]:.2f} {info["currency"]}'
+            change = info.get('bid') - info.get('previousClose')
+            changepercent = (change / info.get('previousClose'))
+            message = f'{ticker.upper()}: {info["bid"]:.2f} {info["currency"]}'
             prices = get_prices(ticker, "1d")
             day_high = prices["High"].iloc[-1]
             day_low = prices["Low"].iloc[-1]
