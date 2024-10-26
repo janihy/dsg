@@ -941,24 +941,6 @@ def get_nettix_link(bot, licenseplate) -> Optional[str]:
         return None
 
 
-def get_tori_link(licenseplate: str) -> Optional[str]:
-    payload = {
-        'hakusana': licenseplate
-    }
-
-    res = requests.get('https://autot.tori.fi/vaihtoautot', params=payload)
-    soup = BeautifulSoup(res.text, features="lxml")
-    data = json.loads(soup.find('script', id="__NEXT_DATA__").string)
-
-    try:
-        # yeah i know
-        link = data['props']['pageProps']['initialReduxState']['search']['result']['list_ads'][0]['share_link']
-    except Exception:
-        return None
-
-    return link
-
-
 def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: int = 0, vehicletype: str = "henkiloauto", rawresponse: bool = False) -> Optional[Decimal]:
     # https://www.traficom.fi/fi/liikenne/tieliikenne/ajoneuvoveron-rakenne-ja-maara
     # we only support henkilöautos
@@ -1149,11 +1131,8 @@ def print_technical(bot, trigger) -> None:
 
     ad_links = []
     nettiauto_url = get_nettix_link(bot, licenseplate)
-    tori_url = get_tori_link(licenseplate)
     if nettiauto_url:
         ad_links.append(nettiauto_url)
-    if tori_url:
-        ad_links.append(tori_url)
     if ad_links:
         if techdata is not None:
             bot.say(f"On muuten myynnissä: {' ja '.join(ad_links)}")
@@ -1170,4 +1149,3 @@ if __name__ == "__main__":
 
     # print(get_technical(licenseplate="oxg-353", rawresponse=True))
     # print(get_emissions(licenseplate="gfs-10"))
-    # print(get_nettix_token())
