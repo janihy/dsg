@@ -4,14 +4,14 @@
 """
 
 # Euribor
-# https://www.suomenpankki.fi/fi/Tilastot/korot/taulukot2/
+# https://www.suomenpankki.fi/fi/tilastot/korot-ja-valuuttakurssit/euriborkorot/
 
 from sopel.plugin import command
 
 import requests
 import xml.etree.ElementTree as ET
 
-EURIBOR_ENDPOINT = "https://www.suomenpankki.fi/WebForms/ReportViewerPage.aspx?report=/tilastot/markkina-_ja_hallinnolliset_korot/euribor_korot_today_xml_fi&output=xml"
+EURIBOR_ENDPOINT = "https://reports.suomenpankki.fi/WebForms/ReportViewerPage.aspx?report=/tilastot/markkina-_ja_hallinnolliset_korot/euribor_korot_today_xml_fi&output=xml"
 
 
 def get_euribor_rates():
@@ -32,7 +32,17 @@ def get_euribor_rates():
     return None
 
 
+def euribor_data_to_str(data):
+    return f"12 kk: {data['12 kk (tod.pv/360)']} ja 3 kk: {data['3 kk (tod.pv/365)']}"
+
+
 @command('euribor')
-def production(bot, trigger):
+def say_euribor(bot, trigger):
     data = get_euribor_rates()
-    bot.say(data)
+    out = euribor_data_to_str(data)
+    bot.say(out)
+
+
+if __name__ == '__main__':
+    data = get_euribor_rates()
+    print(euribor_data_to_str(data))
