@@ -33,7 +33,7 @@ def get_euribor_rates():
 
 
 def euribor_data_to_str(data):
-    return f"12 kk: {data['12 kk (tod.pv/360)']} ja 3 kk: {data['3 kk (tod.pv/365)']}"
+    return f"12 kk: {data['12 kk (tod.pv/360)']} ja 3 kk: {data['3 kk (tod.pv/360)']}"
 
 
 @command('euribor')
