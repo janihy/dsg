@@ -1007,7 +1007,7 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "kayttoonottopvm": biltema_info.get('registrationDate')
     }
     try:
-        req = requests.post(DSG_ENDPOINT, json=params, timeout=5)
+        req = requests.post(DSG_ENDPOINT, json=params, timeout=10)
         dsg_data = req.json()
         count = len(dsg_data)
         if count == 1:
