@@ -1081,9 +1081,8 @@ def handle_leima(bot, trigger) -> None:
             bot.say(f"{licenseplate.upper()}: Katsastettava viimeistään {leima_date} ({time_to_leima.days} päivää)")
         except ValueError:
             bot.say(f"Erikoinen päivämäärä toi {leima_date}...")
-
-    # nope, let's tell the bad news
-    bot.say(f"Ei oo kerrottu milloin {licenseplate.upper()} pitää katsastaa :(")
+    else:
+        bot.say(f"Ei oo kerrottu milloin {licenseplate.upper()} pitää katsastaa :(")
 
 
 @plugin.commands('rekisteri')
