@@ -1059,25 +1059,31 @@ def handle_leima(bot, trigger) -> None:
     chan = state.get_channel_slug(trigger.sender)
     leimas = state.get_channel_value(chan, 'leima', {})
 
-    # normalize channel slug to avoid problems with storage later on
+    # TODO? normalize channel slug to avoid problems with storage later on
     licenseplate = trigger.group(1)
+
+    # tell the user how to use
     if not licenseplate:
         return bot.say(f"Kokeile {trigger.group(0)} <kilpi> [uusi_määräaika]")
-    if licenseplate not in leimas:
-        return bot.say(f"Ei oo kerrottu milloin {licenseplate.upper()} pitää katsastaa :(")
 
+    # has the user provided a new date to save?
     if new_date := trigger.group(2):
         leimas[licenseplate] = new_date
         # sopel channel values need to be json serializable so we'll parse this as datetime later
         state.set_channel_value(chan, 'leima', leimas)
         return bot.say(f"{licenseplate.upper()}: seuraava katsastus: {new_date}")
-    else:
+
+    # if not, is the plate already in the db?
+    if licenseplate in leimas:
         leima_date = leimas.get(licenseplate)
         try:
             time_to_leima = datetime.datetime.fromisoformat(leima_date) - datetime.datetime.today()
             bot.say(f"{licenseplate.upper()}: Katsastettava viimeistään {leima_date} ({time_to_leima.days} päivää)")
         except ValueError:
             bot.say(f"Erikoinen päivämäärä toi {leima_date}...")
+
+    # nope, let's tell the bad news
+    bot.say(f"Ei oo kerrottu milloin {licenseplate.upper()} pitää katsastaa :(")
 
 
 @plugin.commands('rekisteri')
