@@ -13,7 +13,7 @@ import json
 import datetime
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
-MOTONET_ENDPOINT = 'https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI/{licenseplate}?locale=fi'
+MOTONET_ENDPOINT = 'https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI?locale=fi&registrationNumber={licenseplate}'
 DSG_ENDPOINT = "http://localhost:8000"
 DEFAULT_HEADERS: Dict[str, str] = {}
 
