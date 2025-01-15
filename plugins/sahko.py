@@ -51,15 +51,19 @@ def get_latest_prices() -> Dict[str, dict]:
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow_start = today_start + timedelta(days=1)
     tomorrow_end = tomorrow_start + timedelta(days=1)
-    prices = requests.get(PRICES_ENDPOINT).json()
+    raw_prices = requests.get(PRICES_ENDPOINT).json()
+    prices = {}
     today_data = []
     tomorrow_data = []
 
-    for price in prices.get('prices'):
+    for price in raw_prices.get('prices'):
         price['start'] = datetime.fromisoformat(price.pop('startDate').replace("Z", "+00:00"))
         price['end'] = datetime.fromisoformat(price.pop('endDate').replace("Z", "+00:00"))
         if price['start'] < now < price['end']:
             prices['current'] = price.get('price')
+        # okay yeah this is a bit hacky and not DRY
+        if price['start'] < now + timedelta(hours=1) < price['end']:
+            prices['next_hour'] = price.get('price')
         if price['start'] >= today_start and price['end'] <= tomorrow_start:
             today_data.append(price)
         elif price['start'] >= tomorrow_start and price['end'] <= tomorrow_end:
@@ -108,10 +112,12 @@ def prices(bot, trigger):
         bot.say(response)
     else:
         current_price = prices.get('current')
+        next_hour = prices.get('next_hour')
         today = prices.get('today', {})
         today_average = today.get('average')
         current_price_str = color(str(current_price), colors.GREEN) if current_price < today_average else color(str(current_price), colors.RED)
-        bot.say(f"Pörssisähkö nyt {current_price_str} snt/kWh. Päivän alin/ylin {today.get('min')}/{today.get('max')} ja keskihinta {round(today_average, 2)} snt/kWh.")
+        current_trend_icon = "📈" if next_hour > current_price else "📉"
+        bot.say(f"Pörssisähkö nyt {current_price_str} snt/kWh {current_trend_icon}. Päivän alin/ylin {today.get('min')}/{today.get('max')} ja keskihinta {round(today_average, 2)} snt/kWh.")
 
         # hehz
         if current_price >= 50:
@@ -130,6 +136,6 @@ def ol3(bot, trigger):
 
 
 if __name__ == '__main__':
-    # print(get_latest_prices().get('current'))
-    print(build_output_msg(get_current_output()))
+    #print(get_latest_prices().get('current'))
+    #print(build_output_msg(get_current_output()))
     print(json.dumps(get_latest_prices(), indent=2, default=str))
