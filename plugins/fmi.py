@@ -176,7 +176,7 @@ def get_fmi_data(place: str) -> dict:
             "snow": "obs-obs-1-1-snow_aws",
             "weather": "obs-obs-1-1-wawa"
         }
-        result = {k: convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': v}).find_all('wml2:value')[-1].text) for k, v in observations_map.items()}
+        result |= {k: convert_float(observations_soup.find('wml2:measurementtimeseries', {'gml:id': v}).find_all('wml2:value')[-1].text) for k, v in observations_map.items()}
         result['weather'] = int(result['weather'])
     except Exception as e:
         print(e)
