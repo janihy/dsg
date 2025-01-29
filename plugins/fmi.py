@@ -101,7 +101,8 @@ WW_MAP = {
     85: "heikkoja lumikuuroja",
     86: "kohtalaisia lumikuuroja",
     87: "kovia lumikuuroja",
-    89: "raekuuroja mahdollisesti yhdessä vesi- tai räntäsateen kanssa"
+    89: "raekuuroja mahdollisesti yhdessä vesi- tai räntäsateen kanssa",
+    -1: "palvelussa häire"
 }
 
 DIRECTION_MAP = {
