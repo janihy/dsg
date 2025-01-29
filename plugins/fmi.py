@@ -253,10 +253,10 @@ def print_weather(bot, trigger):
         msg += " Lumensyvyys {snow:.0f} cm.".format(**weather)
     forecast = weather['forecast']
     if "temp" in forecast:
-        weather['forecastweather'] = WEATHERSYMBOL3_MAP[weather['forecastweather']]
+        forecast['weather'] = WEATHERSYMBOL3_MAP[forecast['weather']]
         forecast['temp'] = round(forecast['temp'])
         forecast['windspeed'] = round(forecast['windspeed'])
-        msg += " Huomispäiväksi luvattu {temp:n}°C, tuulee {windspeed:n} m/s - {forecastweather}.".format(**forecast)
+        msg += " Huomispäiväksi luvattu {temp:n}°C, tuulee {windspeed:n} m/s - {weather}.".format(**forecast)
 
     if "error" in weather:
         msg += f" Ei kaikkia tietoja, koska {weather['error']}"
