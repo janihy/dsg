@@ -50,9 +50,9 @@ WEATHERSYMBOL3_MAP = {
 
 # https://www.ilmatieteenlaitos.fi/latauspalvelun-pikaohje
 WW_MAP = {
-    0: "ei merkittäviä sääilmiöitä (minkään alla olevan wawa-koodin ehdot eivät täyty)",
-    4: "auerta, savua tai ilmassa leijuvaa pölyä ja näkyvyys vähintään 1 km",
-    5: "auerta, savua tai ilmassa leijuvaa pölyä ja näkyvyys alle 1 km",
+    0: "ei merkittäviä sääilmiöitä",
+    4: "auerta, savua tai ilmassa leijuvaa pölyä",
+    5: "auerta, savua tai ilmassa leijuvaa pölyä",
     10: "utua",
     20: "sumua",
     21: "sadetta (olomuoto on määrittelemätön)",
@@ -89,11 +89,11 @@ WW_MAP = {
     72: "kohtalaista lumisadetta",
     73: "tiheää lumisadetta",
     74: "heikkoa jääjyvässadetta",
-    75: "kohtalaista jääjyväsadetta",
-    76: "kovaa jääjyväsadetta",
+    75: "kohtalaista jääjyvässadetta",
+    76: "kovaa jääjyvässadetta",
     77: "lumijyväsiä",
     78: "jääkiteitä",
-    80: "kuuroja tai ajoittaista sadetta(heikkoja)",
+    80: "kuuroja tai ajoittaista sadetta (heikkoja)",
     81: "heikkoja vesikuuroja",
     82: "kohtalaisia vesikuuroja",
     83: "kovia vesikuuroja",
