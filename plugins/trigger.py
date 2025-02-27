@@ -9,7 +9,7 @@ import re
 strings = [
     {
         'rule': 'via dolorosa',
-        'response': 'https://soundcloud.com/oaklydnb/tommi-lantinen-via-dolorosa-oakly-bootleg'
+        'response': 'https://www.youtube.com/watch?v=fvxWpQTjJ48'
     },
     {
         'rule': 'darekon',
