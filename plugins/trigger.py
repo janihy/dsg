@@ -10,6 +10,10 @@ strings = [
     {
         'rule': 'via dolorosa',
         'response': 'https://soundcloud.com/oaklydnb/tommi-lantinen-via-dolorosa-oakly-bootleg'
+    },
+    {
+        'rule': 'darekon',
+        'response': 'https://imgur.com/a/oyrPJex'
     }
 ]
 
