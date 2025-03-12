@@ -60,8 +60,24 @@ def test_euribor_command(configfactory, botfactory, ircfactory, userfactory, res
         status=200,
     )
 
-    irc.say(user, '#test', '.euribor')
-
+    irc.say(user, '#nakki', '.euribor')
     assert bot.backend.message_sent == rawlist(
-        'PRIVMSG #test :12 kk: 2,449 ja 3 kk: 2,553'
+        'PRIVMSG #nakki :12 kk: 2.449 ja 3 kk: 2.553'
+    )
+
+def test_euribor_command_with_margin(configfactory, botfactory, ircfactory, userfactory, responses):
+    settings = configfactory(TEST_NAME, TEST_CONFIG)
+    bot = botfactory.preloaded(settings, ['euribor'])
+    irc = ircfactory(bot)
+    user = userfactory('Tuplis')
+
+    responses.get(
+        EURIBOR_ENDPOINT,
+        body=MOCK_EURIBOR_RESPONSE,
+        status=200,
+    )
+
+    irc.say(user, '#nakki', '.euribor 0.5')
+    assert bot.backend.message_sent == rawlist(
+        'PRIVMSG #nakki :12 kk: 2.449 ja 3 kk: 2.553, mutta sulle 2.949 ja 3.053'
     )

@@ -23,7 +23,7 @@ def get_euribor_rates():
         rates = {}
         root = ET.fromstring(response.content).findall('.//matrix1_Title_Collection/', {'': 'euribor_korot_today_xml_fi'})
         for child in root:
-            rate = {re.sub(r'^([0-9]+\s[a-z]+) \(tod\.pv/360\)$', r'\1', child.get('name')): child.find('./{euribor_korot_today_xml_fi}intr').get('value')}
+            rate = {re.sub(r'^([0-9]+\s[a-z]+) \(tod\.pv/360\)$', r'\1', child.get('name')): child.find('./{euribor_korot_today_xml_fi}intr').get('value').replace(',', '.')}
             rates.update(rate)
         return rates
 
@@ -43,5 +43,7 @@ def euribor_data_to_str(data):
 @command('euribor')
 def say_euribor(bot, trigger):
     data = get_euribor_rates()
+    if trigger.group(2):
+        data["margin"] = float(trigger.group(2))
     out = euribor_data_to_str(data)
     bot.say(out)
