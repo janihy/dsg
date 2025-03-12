@@ -20,7 +20,7 @@ def get_euribor_rates():
         response = requests.get(EURIBOR_ENDPOINT)
         response.raise_for_status()  # Raise an error for failed requests
         rates = {}
-        root = ET.fromstring(response.content).findall('.//period/matrix1_Title_Collection/', {'': 'euribor_korot_today_xml_fi'})
+        root = ET.fromstring(response.content).findall('.//matrix1_Title_Collection/', {'': 'euribor_korot_today_xml_fi'})
         for child in root:
             rate = {child.get('name'): child.find('./{euribor_korot_today_xml_fi}intr').get('value')}
             rates.update(rate)
@@ -33,7 +33,11 @@ def get_euribor_rates():
 
 
 def euribor_data_to_str(data):
-    return f"12 kk: {data['12 kk (tod.pv/360)']} ja 3 kk: {data['3 kk (tod.pv/360)']}"
+    rates = f"12 kk: {data['12 kk (tod.pv/360)']} ja 3 kk: {data['3 kk (tod.pv/360)']}"
+    if "margin" in data:
+        data = {k: float(v) + data["margin"] for k, v in data.items()}
+        rates += f", mutta sulle {data['12 kk (tod.pv/360)']} ja {data['3 kk (tod.pv/360)']}"
+    return rates
 
 
 @command('euribor')
@@ -41,8 +45,3 @@ def say_euribor(bot, trigger):
     data = get_euribor_rates()
     out = euribor_data_to_str(data)
     bot.say(out)
-
-
-if __name__ == '__main__':
-    data = get_euribor_rates()
-    print(euribor_data_to_str(data))
