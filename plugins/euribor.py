@@ -8,6 +8,7 @@
 
 from sopel.plugin import command
 
+import re
 import requests
 import xml.etree.ElementTree as ET
 
@@ -22,9 +23,8 @@ def get_euribor_rates():
         rates = {}
         root = ET.fromstring(response.content).findall('.//matrix1_Title_Collection/', {'': 'euribor_korot_today_xml_fi'})
         for child in root:
-            rate = {child.get('name'): child.find('./{euribor_korot_today_xml_fi}intr').get('value')}
+            rate = {re.sub(r'^([0-9]+\s[a-z]+) \(tod\.pv/360\)$', r'\1', child.get('name')): child.find('./{euribor_korot_today_xml_fi}intr').get('value')}
             rates.update(rate)
-
         return rates
 
     except Exception as e:
@@ -33,10 +33,10 @@ def get_euribor_rates():
 
 
 def euribor_data_to_str(data):
-    rates = f"12 kk: {data['12 kk (tod.pv/360)']} ja 3 kk: {data['3 kk (tod.pv/360)']}"
+    rates = f"12 kk: {data['12 kk']} ja 3 kk: {data['3 kk']}"
     if "margin" in data:
         data = {k: float(v) + data["margin"] for k, v in data.items()}
-        rates += f", mutta sulle {data['12 kk (tod.pv/360)']} ja {data['3 kk (tod.pv/360)']}"
+        rates += f", mutta sulle {data['12 kk']} ja {data['3 kk']}"
     return rates
 
 

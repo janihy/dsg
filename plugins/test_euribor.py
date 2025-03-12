@@ -13,8 +13,8 @@ extra = .
 """
 
 TEST_EURIBOR_RATES = {
-    '12 kk (tod.pv/360)': '0.123',
-    '3 kk (tod.pv/360)': '0.456',
+    '12 kk': '0.123',
+    '3 kk': '0.456',
 }
 
 MOCK_EURIBOR_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
