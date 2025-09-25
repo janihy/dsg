@@ -61,8 +61,9 @@ def trigger(bot, trigger):
         year_high = ytd_prices["High"].max()
         message += f' Vuoden ylin {year_high:.2f}, alin {year_low:.2f}.'
 
+        # pe can be "Infinity" or a number apparently
         pe = info.get("trailingPE")
-        if pe:
+        if isinstance(pe, (int, float)) and pe != float('inf'):
             message += f' P/E {pe:.2f}.'
 
         dividendyield = info.get("dividendYield")/100 or None
@@ -76,4 +77,4 @@ def trigger(bot, trigger):
 
 if __name__ == '__main__':
     # python3 stonk.py | jq --sort-keys .
-    print(json.dumps(dict(get_info("save.st"))))
+    print(json.dumps(dict(get_info("tulav.he"))))
