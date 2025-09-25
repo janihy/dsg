@@ -48,7 +48,7 @@ def trigger(bot, trigger):
         ytd_prices = get_prices(ticker, "ytd")
         year_first = ytd_prices["Open"].iloc[0]
         last_price = ytd_prices["Close"].iloc[-1]
-        message = f'{info.get("shortName")} ({ticker.upper()}): {last_price:.2f} {info["financialCurrency"]}.'
+        message = f'{info.get("shortName")} ({ticker.upper()}): {last_price:.3f} {info["financialCurrency"]}.'
 
         ytd = (last_price - year_first) / year_first
         if ytd > 0:
@@ -65,7 +65,7 @@ def trigger(bot, trigger):
         if pe:
             message += f' P/E {pe:.2f}.'
 
-        dividendyield = info.get("dividendYield") or None
+        dividendyield = info.get("dividendYield")/100 or None
         if dividendyield:
             message += f" Osinkotuotto {dividendyield:.2%}"
     except Exception as e:
@@ -76,4 +76,4 @@ def trigger(bot, trigger):
 
 if __name__ == '__main__':
     # python3 stonk.py | jq --sort-keys .
-    print(json.dumps(dict(get_info("tsla"))))
+    print(json.dumps(dict(get_info("save.st"))))
