@@ -35,17 +35,7 @@ def normalize_ticker(name: str) -> str:
 
 def get_info(name: str):
     ticker_object = yf.Ticker(name)
-    try:
-        info = ticker_object.info
-        assert info.get("shortName")
-    except Exception:
-        if name[-3:].lower() != ".he":
-            if '.' in name:
-                # user probably wrote the name wrong
-                return get_info(f'{name.replace(".", "-")}')
-            # if not, maybe they forgot the helsinki börs (.he)
-            return get_info(f"{name}.he")
-        return None
+    info = ticker_object.info
     return info
 
 
