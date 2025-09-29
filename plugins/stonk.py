@@ -66,7 +66,7 @@ def trigger(bot, trigger):
         if isinstance(pe, (int, float)) and pe != float('inf'):
             message += f' P/E {pe:.2f}.'
 
-        dividendyield = info.get("dividendYield")/100 or None
+        dividendyield = info.get("dividendYield", 0)/100 or None
         if dividendyield:
             message += f" Osinkotuotto {dividendyield:.2%}"
     except Exception as e:
