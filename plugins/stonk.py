@@ -5,20 +5,22 @@
 
 from sopel.plugin import commands
 from sopel.formatting import color, colors
+from pandas import DataFrame
 import json
 import re
 import yfinance as yf
+
 
 def search_ticker(needle: str) -> str:
     '''Search for possible tickers, return one if found'''
     data = yf.Search(f"{needle}", max_results=1).all
     return data.get('quotes', [])[0].get('symbol')
 
+
 def normalize_ticker(name: str) -> str:
     '''Try to normalize a ticker name to something yfinance can understand better.
     This is due to ticker naming being inconsistent between different markets.
     Returns the normalized name, or the original name if no normalization was done.'''
-    suffix = ""
     name = name.upper()
     # if it already has a suffix, just return it
     if re.search(r"\.[A-Z]{1,4}$", name):
@@ -48,7 +50,7 @@ def get_info(name: str):
     return info
 
 
-def get_prices(name: str, period: str = "ytd") -> dict:
+def get_prices(name: str, period: str = "ytd") -> DataFrame:
     # see https://github.com/ranaroussi/yfinance/blob/main/yfinance/base.py#L467 for valid periods
     ticker = yf.Ticker(name)
     prices = ticker.history(period)
@@ -97,7 +99,7 @@ def trigger(bot, trigger):
         if isinstance(pe, (int, float)) and pe != float('inf'):
             message += f' P/E {pe:.2f}.'
 
-        dividendyield = info.get("dividendYield", 0)/100 or None
+        dividendyield = info.get("dividendYield", 0) / 100 or None
         if dividendyield:
             message += f" Osinkotuotto {dividendyield:.2%}"
     except Exception as e:
