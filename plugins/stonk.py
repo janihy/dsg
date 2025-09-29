@@ -9,6 +9,11 @@ import json
 import re
 import yfinance as yf
 
+def search_ticker(needle: str) -> str:
+    '''Search for possible tickers, return one if found'''
+    data = yf.Search(f"{needle}", max_results=1).all
+    return data.get('quotes', [])[0].get('symbol')
+
 def normalize_ticker(name: str) -> str:
     '''Try to normalize a ticker name to something yfinance can understand better.
     This is due to ticker naming being inconsistent between different markets.
@@ -25,6 +30,10 @@ def normalize_ticker(name: str) -> str:
     # no match, let's ask yfinance
     t = yf.Lookup(name).get_all(count=5)
     t = t.query('symbol.str.startswith(@name)')
+    if len(t) == 0:
+        ticker = search_ticker(name)
+        if ticker:
+            return normalize_ticker(ticker)
     if len(t) == 1:
         return t.iloc[0].name
 
