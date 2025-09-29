@@ -6,10 +6,35 @@
 from sopel.plugin import commands
 from sopel.formatting import color, colors
 import json
+import re
 import yfinance as yf
+
+def normalize_ticker(name: str) -> str:
+    '''Try to normalize a ticker name to something yfinance can understand better.
+    This is due to ticker naming being inconsistent between different markets.
+    Returns the normalized name, or the original name if no normalization was done.'''
+    suffix = ""
+    name = name.upper()
+    # if it already has a suffix, just return it
+    if re.search(r"\.[A-Z]{1,4}$", name):
+        return name
+    # shortcut for some finnish stonks which have 1V naming pattern? no clue really
+    if re.search(r"\dV$", name):
+        return name + ".HE"
+
+    # no match, let's ask yfinance
+    t = yf.Lookup(name).get_all(count=5)
+    t = t.query('symbol.str.startswith(@name)')
+    if len(t) == 1:
+        return t.iloc[0].name
+
+    # lol let's just return the first match if there are multiple
+    # let's take a look later if this causes issues
+    return t.iloc[0].name
 
 
 def get_info(name: str):
+    name = normalize_ticker(name)
     ticker_object = yf.Ticker(name)
     try:
         info = ticker_object.info
@@ -25,10 +50,10 @@ def get_info(name: str):
     return info
 
 
-def get_prices(ticker: str, period: str = "ytd") -> dict:
+def get_prices(name: str, period: str = "ytd") -> dict:
     # see https://github.com/ranaroussi/yfinance/blob/main/yfinance/base.py#L467 for valid periods
-    # FIXME: move the .he suffix guess to somewhere usable in both here and get_info
-    ticker = yf.Ticker(ticker)
+    name = normalize_ticker(name)
+    ticker = yf.Ticker(name)
     prices = ticker.history(period)
     return prices
 
@@ -77,4 +102,19 @@ def trigger(bot, trigger):
 
 if __name__ == '__main__':
     # python3 stonk.py | jq --sort-keys .
-    print(json.dumps(dict(get_info("tulav.he"))))
+    # print(json.dumps(dict(get_info("ssh1v.he"))))
+    stonks_to_normalize = [
+        "ssh1v",
+        "ssh1v.he",
+        "nokia",
+        "nokia.he",
+        "tsla",
+        "aapl",
+        "amzn",
+        "msft",
+        "googl",
+        "iqqh"
+    ]
+
+    for stonk in stonks_to_normalize:
+        print(f"trying to normalize: normalize_ticker({stonk}) -> {normalize_ticker(stonk)}")
