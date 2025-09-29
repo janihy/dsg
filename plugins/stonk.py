@@ -71,10 +71,18 @@ def trigger(bot, trigger):
     try:
         ytd_prices = get_prices(ticker, "ytd")
         year_first = ytd_prices["Open"].iloc[0]
-        last_price = ytd_prices["Close"].iloc[-1]
-        message = f'{info.get("shortName")} ({ticker.upper()}): {last_price:.3f} {info["financialCurrency"]}.'
+        yesterday_price = ytd_prices["Close"].iloc[-2]
+        current_price = ytd_prices["Close"].iloc[-1]
+        message = f'{info.get("shortName")} ({ticker.upper()}): {current_price:.3f} {info["financialCurrency"]}.'
 
-        ytd = (last_price - year_first) / year_first
+        today = (current_price - yesterday_price) / yesterday_price
+        if today > 0:
+            indicator = colors.GREEN
+        else:
+            indicator = colors.RED
+        message += color(f' Tänään {today:+.2%}.', indicator)
+
+        ytd = (current_price - year_first) / year_first
         if ytd > 0:
             indicator = colors.GREEN
         else:
