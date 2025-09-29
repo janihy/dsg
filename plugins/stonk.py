@@ -34,7 +34,6 @@ def normalize_ticker(name: str) -> str:
 
 
 def get_info(name: str):
-    name = normalize_ticker(name)
     ticker_object = yf.Ticker(name)
     try:
         info = ticker_object.info
@@ -52,7 +51,6 @@ def get_info(name: str):
 
 def get_prices(name: str, period: str = "ytd") -> dict:
     # see https://github.com/ranaroussi/yfinance/blob/main/yfinance/base.py#L467 for valid periods
-    name = normalize_ticker(name)
     ticker = yf.Ticker(name)
     prices = ticker.history(period)
     return prices
@@ -64,6 +62,7 @@ def trigger(bot, trigger):
         bot.reply(f'Kokeile !{trigger.group(1)} TSLA')
         return False
     ticker = trigger.group(2)
+    ticker = normalize_ticker(ticker)
     info = get_info(ticker)
 
     if not info:
