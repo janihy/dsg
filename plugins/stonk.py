@@ -75,7 +75,7 @@ def trigger(bot, trigger):
         yesterday_price = ytd_prices["Close"].iloc[-2]
         current_price = ytd_prices["Close"].iloc[-1]
         currency = info.get("financialCurrency") or info.get("currency")
-        message = f'{info.get("shortName")} ({ticker.upper()}): {current_price:.3f} {currency}.'
+        message = f'{info.get("longName")} ({ticker.upper()}): {current_price:.3f} {currency}.'
 
         today = (current_price - yesterday_price) / yesterday_price
         if today > 0:
