@@ -74,7 +74,8 @@ def trigger(bot, trigger):
         year_first = ytd_prices["Open"].iloc[0]
         yesterday_price = ytd_prices["Close"].iloc[-2]
         current_price = ytd_prices["Close"].iloc[-1]
-        message = f'{info.get("shortName")} ({ticker.upper()}): {current_price:.3f} {info["financialCurrency"]}.'
+        currency = info.get("financialCurrency") or info.get("currency")
+        message = f'{info.get("shortName")} ({ticker.upper()}): {current_price:.3f} {currency}.'
 
         today = (current_price - yesterday_price) / yesterday_price
         if today > 0:
