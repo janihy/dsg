@@ -70,30 +70,28 @@ def trigger(bot, trigger):
         bot.reply('Valitettavasti meiltä on päässeet numerot loppumaan :/')
         return False
     try:
+        # at some point these prices were not the delayed ones, not sure if this is still the case
         ytd_prices = get_prices(ticker, "ytd")
         year_first = ytd_prices["Open"].iloc[0]
-        yesterday_price = ytd_prices["Close"].iloc[-2]
         current_price = ytd_prices["Close"].iloc[-1]
         currency = info.get("financialCurrency") or info.get("currency")
         message = f'{info.get("longName")} ({ticker.upper()}): {current_price:.3f} {currency}.'
 
-        today = (current_price - yesterday_price) / yesterday_price
+        today = info.get("regularMarketChangePercent", 0) / 100
         if today > 0:
             indicator = colors.GREEN
         else:
             indicator = colors.RED
-        message += color(f' Tänään {today:+.2%}.', indicator)
+        message += ' Tänään ' + color(f'{today:+.2%}', indicator) + '.'
 
         ytd = (current_price - year_first) / year_first
+        year_low = ytd_prices["Low"].min()
+        year_high = ytd_prices["High"].max()
         if ytd > 0:
             indicator = colors.GREEN
         else:
             indicator = colors.RED
-        message += color(f' YTD {ytd:+.2%}.', indicator)
-
-        year_low = ytd_prices["Low"].min()
-        year_high = ytd_prices["High"].max()
-        message += f' Vuoden ylin {year_high:.2f}, alin {year_low:.2f}.'
+        message += ' YTD ' + color(f'{ytd:+.2%}', indicator) + f' ({year_high:.2f} - {year_low:.2f}).'
 
         # pe can be "Infinity" or a number apparently
         pe = info.get("trailingPE")
