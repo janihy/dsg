@@ -82,7 +82,7 @@ def trigger(bot, trigger):
             indicator = colors.GREEN
         else:
             indicator = colors.RED
-        message += ' Tänään ' + color(f'{today:+.2%}', indicator) + '.'
+        message += ' Tänään ' + color(f'{today:+.2%}', indicator) + ','
 
         ytd = (current_price - year_first) / year_first
         year_low = ytd_prices["Low"].min()
@@ -91,7 +91,7 @@ def trigger(bot, trigger):
             indicator = colors.GREEN
         else:
             indicator = colors.RED
-        message += ' YTD ' + color(f'{ytd:+.2%}', indicator) + f' ({year_high:.2f} - {year_low:.2f}).'
+        message += ' YTD ' + color(f'{ytd:+.2%}', indicator) + '.'
 
         # pe can be "Infinity" or a number apparently
         pe = info.get("trailingPE")
