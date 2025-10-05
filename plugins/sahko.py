@@ -110,7 +110,7 @@ def prices(bot, trigger):
         tomorrow_min = tomorrow.get('min')
         tomorrow_max = tomorrow.get('max')
         response = f"Börs huomenna: alin/ylin {tomorrow_min}/{tomorrow_max} ja keskihinta {tomorrow.get('average')} snt/kWh."
-        if not tomorrow.get('is_data_complete'):
+        if tomorrow.get('is_data_complete') is False:
             response += " Hinnat tosin tulee vasta klo 14."
         bot.say(response)
     else:
