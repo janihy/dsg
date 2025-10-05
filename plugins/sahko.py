@@ -17,7 +17,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
-PRICES_ENDPOINT = "https://api.porssisahko.net/v1/latest-prices.json"
+PRICES_ENDPOINT = "https://api.porssisahko.net/v2/latest-prices.json"
 FINGRID_ENDPOINT = "https://api.fingrid.fi/v1/variable/event/json"
 FINGRID_ID_MAP = {
     "181": "tuulivoima",
@@ -51,19 +51,18 @@ def get_latest_prices() -> Dict[str, dict]:
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow_start = today_start + timedelta(days=1)
     tomorrow_end = tomorrow_start + timedelta(days=1)
-    raw_prices = requests.get(PRICES_ENDPOINT).json()
+    raw_prices = requests.get(PRICES_ENDPOINT).json().get('prices')
     prices = {}
     today_data = []
     tomorrow_data = []
 
-    for price in raw_prices.get('prices'):
-        price['start'] = datetime.fromisoformat(price.pop('startDate').replace("Z", "+00:00"))
-        price['end'] = datetime.fromisoformat(price.pop('endDate').replace("Z", "+00:00"))
+    for i, price in enumerate(raw_prices):
+        price['start'] = datetime.fromisoformat(price.pop('startDate'))
+        price['end'] = datetime.fromisoformat(price.pop('endDate'))
         if price['start'] < now < price['end']:
-            prices['current'] = price.get('price')
-        # okay yeah this is a bit hacky and not DRY
-        if price['start'] < now + timedelta(hours=1) < price['end']:
-            prices['next_hour'] = price.get('price')
+            prices['current'] = raw_prices[i].get("price")
+            # the data has been ordered so trust me bro
+            prices['next_tick'] = raw_prices[i-1].get("price")
         if price['start'] >= today_start and price['end'] <= tomorrow_start:
             today_data.append(price)
         elif price['start'] >= tomorrow_start and price['end'] <= tomorrow_end:
@@ -74,7 +73,8 @@ def get_latest_prices() -> Dict[str, dict]:
         'min': round(min(tomorrow_prices), 2),
         'max': round(max(tomorrow_prices), 2),
         'average': round(sum(tomorrow_prices) / len(tomorrow_prices), 2),
-        'prices': tomorrow_data
+        'prices': tomorrow_data,
+        'is_data_complete': len(tomorrow_prices) == 96
     }
 
     today_prices = [price.get('price') for price in today_data]
@@ -82,21 +82,22 @@ def get_latest_prices() -> Dict[str, dict]:
         'min': round(min(today_prices), 2),
         'max': round(max(today_prices), 2),
         'average': round(sum(today_prices) / len(today_prices), 2),
-        'prices': today_data
+        'prices': today_data,
+        'is_data_complete': len(today_prices) == 96
     }
 
     return prices
 
 
 def olkiluoto():
-    response = requests.get("https://toimiikoolkiluoto3.fi/")
-    
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        status = soup.find('h1')
-        
-        if status:
-            return status.get_text()
+    # response = requests.get("https://toimiikoolkiluoto3.fi/", timeout=3)
+
+    # if response.status_code == 200:
+    #     soup = BeautifulSoup(response.content, 'html.parser')
+    #     status = soup.find('h1')
+
+    #     if status:
+    #         return status.get_text()
 
     return "I want to believe"
 
@@ -109,14 +110,16 @@ def prices(bot, trigger):
         tomorrow_min = tomorrow.get('min')
         tomorrow_max = tomorrow.get('max')
         response = f"Börs huomenna: alin/ylin {tomorrow_min}/{tomorrow_max} ja keskihinta {tomorrow.get('average')} snt/kWh."
+        if not tomorrow.get('is_data_complete'):
+            response += " Hinnat tosin tulee vasta klo 14."
         bot.say(response)
     else:
         current_price = prices.get('current')
-        next_hour = prices.get('next_hour')
+        next_tick = prices.get('next_tick')
         today = prices.get('today', {})
         today_average = today.get('average')
         current_price_str = color(str(current_price), colors.GREEN) if current_price < today_average else color(str(current_price), colors.RED)
-        current_trend_icon = "📈" if next_hour > current_price else "📉"
+        current_trend_icon = "📈" if next_tick > current_price else "📉"
         bot.say(f"Pörssisähkö nyt {current_price_str} snt/kWh {current_trend_icon}. Päivän alin/ylin {today.get('min')}/{today.get('max')} ja keskihinta {round(today_average, 2)} snt/kWh.")
 
         # hehz
