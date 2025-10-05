@@ -27,9 +27,9 @@ FIAT_PROVIDERS = {
 CRYPTO_URL = 'https://api.coingecko.com/api/v3/exchange_rates'
 EXCHANGE_REGEX = re.compile(r'''
     ^(\d+(?:\.\d+)?)                                            # Decimal number
-    \s*([a-zA-Z]{4})                                            # 4-letter currency code
+    \s*([a-zA-Z]{3,4})                                            # 4-letter currency code
     \s+(?:in|as|of|to)\s+                                       # preposition
-    (([a-zA-Z]{4}$)|([a-zA-Z]{4})\s)+$                          # one or more 4-letter currency code
+    (([a-zA-Z]{3,4}$)|([a-zA-Z]{3,4})\s)+$                          # one or more 4-letter currency code
 ''', re.VERBOSE)
 LOGGER = logging.getLogger(__name__)
 UNSUPPORTED_CURRENCY = "Sorry, {} isn't currently supported."
