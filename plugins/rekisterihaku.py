@@ -4,7 +4,6 @@
 """
 
 from sopel import plugin, tools, db
-from bs4 import BeautifulSoup
 from typing import Dict, Optional
 from decimal import Decimal
 
@@ -15,6 +14,7 @@ import datetime
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
 MOTONET_ENDPOINT = 'https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI?locale=fi&registrationNumber={licenseplate}'
 DSG_ENDPOINT = "http://localhost:8000"
+LEIMA_ENDPOINT = "https://ajanvaraus.idealinspect.fi/api/chains/107/stations/307/vehicles/search"
 DEFAULT_HEADERS: Dict[str, str] = {}
 
 NEDC_MAP = {
@@ -1052,9 +1052,19 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
     return techdata
 
 
+def get_leima(licenseplate: str) -> Optional[str]:
+    # new! a feature to scrape internet and get the next inspection date
+    req = requests.post(LEIMA_ENDPOINT, json={'registrationNumber': licenseplate.upper()})
+    leima_info = json.loads(req.text)
+    if leima_info:
+        return leima_info.get('nextInspectionBefore', '')
+    return None
+
+
 @plugin.rule(r'!leima\s*([a-zA-Z0-9\-]*)\s*([0-9\-]*)')
 def handle_leima(bot, trigger) -> None:
     # either set the next leima date for a plate or display the next one for the plate
+    # old stuff, maybe get rid of this if the new scraping works well enough
     state = db.SopelDB(bot.config)
     chan = state.get_channel_slug(trigger.sender)
     leimas = state.get_channel_value(chan, 'leima', {})
@@ -1072,6 +1082,16 @@ def handle_leima(bot, trigger) -> None:
         # sopel channel values need to be json serializable so we'll parse this as datetime later
         state.set_channel_value(chan, 'leima', leimas)
         return bot.say(f"{licenseplate.upper()}: seuraava katsastus: {new_date}")
+
+    # no new date, just display the current one
+    leima_date = get_leima(licenseplate)
+    if leima_date:
+        try:
+            time_to_leima = datetime.datetime.fromisoformat(leima_date) - datetime.datetime.today()
+            bot.say(f"{licenseplate.upper()}: Katsastettava viimeistään {leima_date} ({time_to_leima.days} päivää)")
+            return
+        except ValueError:
+            bot.say(f"Tuli hassua dataa netistä: {leima_date}...")
 
     # if not, is the plate already in the db?
     if licenseplate in leimas:
@@ -1154,3 +1174,4 @@ if __name__ == "__main__":
 
     # print(get_technical(licenseplate="oxg-353", rawresponse=True))
     # print(get_emissions(licenseplate="gfs-10"))
+    print(get_leima("oxg-353"))
