@@ -14,6 +14,8 @@ from email.message import EmailMessage
 from ipaddress import ip_address
 import logging
 import re
+import json
+import datetime
 from socket import getaddrinfo, IPPROTO_TCP
 from typing import NamedTuple, Optional, TYPE_CHECKING
 from urllib.parse import urlparse
@@ -84,6 +86,8 @@ class UrlSection(types.StaticSection):
     attacker can change which IP address a domain name refers to between when
     Sopel checks it and when the HTTP request is made.
     """
+    youtube_apikey = types.ValidatedAttribute(
+            'youtube_apikey', default='')
 
 
 def configure(config: Config) -> None:
@@ -119,6 +123,11 @@ def configure(config: Config) -> None:
         'enable_private_resolution',
         'Allow all requests to private (local network) IP addresses?'
     )
+    config.url.configure_setting(
+        'youtube_apikey',
+        'Enter Youtube Data API v3 key'
+    )
+
 
 
 def setup(bot: Sopel) -> None:
@@ -320,6 +329,14 @@ def title_command(bot: SopelWrapper, trigger: Trigger) -> None:
         else:
             bot.reply("I couldn't get all of the titles, but I fetched what I could!")
 
+# TODO: move these to a nettix api module as this functionality is duplicate from rekisterihaku.py
+# bad bad bad
+def refresh_nettix_token(bot) -> bool:
+    res = requests.post('https://auth.nettix.fi/oauth2/token', data={'grant_type': 'client_credentials'})
+    token = json.loads(res.text)
+    bot.memory['nettix_token']['access_token'] = token.get('access_token', '')
+    bot.memory['nettix_token']['expires_in'] = datetime.datetime.now() + datetime.timedelta(seconds=token.get('expires_in', ''))
+    return res.status_code == 200
 
 @plugin.rule(r'(?u).*(https?://\S+).*')
 @plugin.output_prefix('[url] ')
@@ -352,7 +369,45 @@ def title_auto(bot: SopelWrapper, trigger: Trigger) -> None:
                 message += ' ( %s )' % tinyurl
             # Guard against responding to other instances of this bot.
             if message != trigger:
-                bot.say(message)
+                youtube_match = re.match(r"https:\/\/(?:www.)?youtu.+\/(?:watch\?v=)?([a-zA-Z0-9_-]+)(?:\?t=([0-9]+))?", url)
+                nettix_match = re.match(r"https?:\/\/(?:www.)?nettiauto\.com\/[a-z0-9\-/]+\/([0-9]+)", url)
+                youtube_apikey = bot.config.url.youtube_apikey
+                if youtube_apikey and youtube_match:
+                    params = {
+                        "part": "snippet",
+                        "id": youtube_match.group(1),
+                        "key": youtube_apikey
+                    }
+                    res = requests.get("https://youtube.googleapis.com/youtube/v3/videos", params=params).json()
+                    try:
+                        snippet = res.get('items', [{}])[0].get('snippet', {})
+                    except Exception:
+                        bot.say(f"Ei oo sellasta kun {youtube_match.group(1)}")
+                        return
+                    msg = f"{snippet.get('channelTitle')} - {snippet.get('title')}"
+                    if youtube_match.group(2):
+                        m, s = divmod(int(youtube_match.group(2)), 60)
+                        msg += f" (@{m}:{s:0>2})"
+                    bot.say(msg)
+                elif nettix_match:
+                    nettix_id = nettix_match.group(1)
+                    if bot.memory['nettix_token'].get('expires_in', datetime.datetime.now()) <= datetime.datetime.now():
+                        if not refresh_nettix_token(bot):
+                            bot.say("oops, nettix api broken")
+
+                    headers = {
+                        "Accept": "application/json",
+                        "X-Access-Token": bot.memory['nettix_token'].get('access_token')
+                    }
+
+                    res = requests.get(f'https://api.nettix.fi/rest/car/ad/{nettix_id}', headers=headers)
+                    nettix_ad = json.loads(res.text)
+                    if nettix_ad:
+                        nettix_output = f'{nettix_ad.get("make").get("name")} {nettix_ad.get("model").get("name")} {nettix_ad.get("modelTypeName")} - {nettix_ad.get("price")} €, {nettix_ad.get("kilometers")/1000:.0f} tkm'
+                        bot.say(nettix_output)
+
+                else:
+                    bot.say(message)
         bot.memory["last_seen_url"][trigger.sender] = url
 
 
