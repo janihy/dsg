@@ -187,7 +187,6 @@ def _user_can_change_excludes(bot: SopelWrapper, trigger: Trigger) -> bool:
 @plugin.command('urlexclude', 'urlpexclude', 'urlban', 'urlpban')
 @plugin.example('.urlpexclude example\\.com/\\w+', user_help=True)
 @plugin.example('.urlexclude example.com/path', user_help=True)
-@plugin.output_prefix('[url] ')
 def url_ban(bot: SopelWrapper, trigger: Trigger) -> None:
     """Exclude a URL from auto title.
 
@@ -238,7 +237,6 @@ def url_ban(bot: SopelWrapper, trigger: Trigger) -> None:
 @plugin.command('urlallow', 'urlpallow', 'urlunban', 'urlpunban')
 @plugin.example('.urlpallow example\\.com/\\w+', user_help=True)
 @plugin.example('.urlallow example.com/path', user_help=True)
-@plugin.output_prefix('[url] ')
 def url_unban(bot: SopelWrapper, trigger: Trigger) -> None:
     """Allow a URL for auto title.
 
@@ -291,7 +289,6 @@ def url_unban(bot: SopelWrapper, trigger: Trigger) -> None:
     '.title https://www.google.com',
     'Google | www.google.com',
     online=True, vcr=True)
-@plugin.output_prefix('[url] ')
 def title_command(bot: SopelWrapper, trigger: Trigger) -> None:
     """
     Show the title or URL information for the given URL, or the last URL seen
@@ -339,7 +336,6 @@ def refresh_nettix_token(bot) -> bool:
     return res.status_code == 200
 
 @plugin.rule(r'(?u).*(https?://\S+).*')
-@plugin.output_prefix('[url] ')
 def title_auto(bot: SopelWrapper, trigger: Trigger) -> None:
     """
     Automatically show titles for URLs. For shortened URLs/redirects, find
