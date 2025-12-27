@@ -1,6 +1,6 @@
 # coding=utf8
 """
-made by tuplis 2021-2024
+made by tuplis 2021-2025
 """
 
 from sopel import plugin, tools, db
@@ -12,13 +12,13 @@ import json
 import datetime
 
 BILTEMA_ENDPOINT = "https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi"
-MOTONET_ENDPOINT = "https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI?locale=fi&registrationNumber={licenseplate}"
+MOTONET_ENDPOINT = "https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI"
 HUUTOKAUPAT_ENDPOINT = "https://huutokaupat.com/api/net-auctions/list"
+NETTIX_ENDPOINT = "https://api.nettix.fi/rest/car/search"
 DSG_ENDPOINT = "http://localhost:8000"
 LEIMA_ENDPOINT = (
     "https://ajanvaraus.idealinspect.fi/api/chains/107/stations/307/vehicles/search"
 )
-DEFAULT_HEADERS: Dict[str, str] = {}
 
 NEDC_MAP = {
     0: 53.29,
@@ -944,9 +944,7 @@ def get_nettix_link(bot, licenseplate) -> Optional[str]:
 
     payload = {"identificationList": licenseplate}
 
-    res = requests.get(
-        "https://api.nettix.fi/rest/car/search", params=payload, headers=headers
-    )
+    res = requests.get(NETTIX_ENDPOINT, params=payload, headers=headers)
     nettix_ad = json.loads(res.text)
     if nettix_ad:
         return nettix_ad[0].get("adUrl")
@@ -1026,8 +1024,14 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
+    params = {
+        "locale": "fi",
+        "registrationNumber": licenseplate.upper(),
+    }
+
     req = requests.get(
-        MOTONET_ENDPOINT.format(licenseplate=licenseplate.upper()),
+        MOTONET_ENDPOINT,
+        params=params,
         cookies=cookies,
         headers=headers,
     )
