@@ -830,6 +830,9 @@ FUEL_TAX_MAP = {
     "diesel": 0.055,
 }
 
+HUUTOKAUPAT_MANUFACTURER_MAP = {
+    "vw": "volkswagen"
+}
 
 def base_tax_from_mass(mass: int) -> Optional[float]:
     if (mass <= 1300):
@@ -944,6 +947,10 @@ def get_nettix_link(bot, licenseplate) -> Optional[str]:
 def get_huutokaupatcom_link(manufacturer, year, licenseplate) -> Optional[str]:
     # for example https://huutokaupat.com/api/net-auctions/list?merkki=audi&sivu=1&vuosimalliMin=2022&vuosimalliMax=2022
     # huutokaupat.com public api does not allow us to search by license plate directly, so we need to get some listings and filter them
+
+    # vw does not equal volkswagen etc
+    if manufacturer.lower() in HUUTOKAUPAT_MANUFACTURER_MAP:
+        manufacturer = HUUTOKAUPAT_MANUFACTURER_MAP[manufacturer.lower()]
     params = {
         'merkki': manufacturer.lower(),
         'vuosimalliMin': year - 1,
