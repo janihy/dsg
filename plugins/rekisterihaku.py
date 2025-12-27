@@ -1107,7 +1107,7 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "registrationdate": firstreg,
         "vin": motonet_info.get("VIN") or biltema_info.get("chassieNumber"),
         "suomiauto": True if biltema_info.get("imported") == "true" else False,
-        "co2": dsg_data.get("Co2"),
+        "co2": dsg_data.get("WLTP_Co2") or dsg_data.get("NEDC_Co2"),
         "location": dsg_data.get("kunta_fi"),
         "color": dsg_data.get("vari_fi"),
         "mileage": dsg_data.get("matkamittarilukema"),
