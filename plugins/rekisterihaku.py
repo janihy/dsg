@@ -1,6 +1,6 @@
 # coding=utf8
 """
-    made by tuplis 2021-2024
+made by tuplis 2021-2024
 """
 
 from sopel import plugin, tools, db
@@ -11,11 +11,13 @@ import requests
 import json
 import datetime
 
-BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
-MOTONET_ENDPOINT = 'https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI?locale=fi&registrationNumber={licenseplate}'
-HUUTOKAUPAT_ENDPOINT = 'https://huutokaupat.com/api/net-auctions/list'
+BILTEMA_ENDPOINT = "https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi"
+MOTONET_ENDPOINT = "https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI?locale=fi&registrationNumber={licenseplate}"
+HUUTOKAUPAT_ENDPOINT = "https://huutokaupat.com/api/net-auctions/list"
 DSG_ENDPOINT = "http://localhost:8000"
-LEIMA_ENDPOINT = "https://ajanvaraus.idealinspect.fi/api/chains/107/stations/307/vehicles/search"
+LEIMA_ENDPOINT = (
+    "https://ajanvaraus.idealinspect.fi/api/chains/107/stations/307/vehicles/search"
+)
 DEFAULT_HEADERS: Dict[str, str] = {}
 
 NEDC_MAP = {
@@ -830,56 +832,55 @@ FUEL_TAX_MAP = {
     "diesel": 0.055,
 }
 
-HUUTOKAUPAT_MANUFACTURER_MAP = {
-    "vw": "volkswagen"
-}
+HUUTOKAUPAT_MANUFACTURER_MAP = {"vw": "volkswagen"}
+
 
 def base_tax_from_mass(mass: int) -> Optional[float]:
-    if (mass <= 1300):
+    if mass <= 1300:
         return 0.610
-    elif (mass > 1300 and mass <= 1400):
+    elif mass > 1300 and mass <= 1400:
         return 0.640
-    elif (mass > 1400 and mass <= 1500):
+    elif mass > 1400 and mass <= 1500:
         return 0.672
-    elif (mass > 1500 and mass <= 1600):
+    elif mass > 1500 and mass <= 1600:
         return 0.706
-    elif (mass > 1600 and mass <= 1700):
+    elif mass > 1600 and mass <= 1700:
         return 0.742
-    elif (mass > 1700 and mass <= 1800):
+    elif mass > 1700 and mass <= 1800:
         return 0.780
-    elif (mass > 1800 and mass <= 1900):
+    elif mass > 1800 and mass <= 1900:
         return 0.820
-    elif (mass > 1900 and mass <= 2000):
+    elif mass > 1900 and mass <= 2000:
         return 0.862
-    elif (mass > 2000 and mass <= 2100):
+    elif mass > 2000 and mass <= 2100:
         return 0.906
-    elif (mass > 2100 and mass <= 2200):
+    elif mass > 2100 and mass <= 2200:
         return 0.952
-    elif (mass > 2200 and mass <= 2300):
+    elif mass > 2200 and mass <= 2300:
         return 1.000
-    elif (mass > 2300 and mass <= 2400):
+    elif mass > 2300 and mass <= 2400:
         return 1.050
-    elif (mass > 2400 and mass <= 2500):
+    elif mass > 2400 and mass <= 2500:
         return 1.102
-    elif (mass > 2500 and mass <= 2600):
+    elif mass > 2500 and mass <= 2600:
         return 1.156
-    elif (mass > 2600 and mass <= 2700):
+    elif mass > 2600 and mass <= 2700:
         return 1.212
-    elif (mass > 2700 and mass <= 2800):
+    elif mass > 2700 and mass <= 2800:
         return 1.270
-    elif (mass > 2800 and mass <= 2900):
+    elif mass > 2800 and mass <= 2900:
         return 1.330
-    elif (mass > 2900 and mass <= 3000):
+    elif mass > 2900 and mass <= 3000:
         return 1.392
-    elif (mass > 3000 and mass <= 3100):
+    elif mass > 3000 and mass <= 3100:
         return 1.456
-    elif (mass > 3100 and mass <= 3200):
+    elif mass > 3100 and mass <= 3200:
         return 1.522
-    elif (mass > 3200 and mass <= 3300):
+    elif mass > 3200 and mass <= 3300:
         return 1.590
-    elif (mass > 3300 and mass <= 3400):
+    elif mass > 3300 and mass <= 3400:
         return 1.660
-    elif (mass > 3400):
+    elif mass > 3400:
         return 1.732
     else:
         return None
@@ -889,9 +890,9 @@ def base_tax_from_co2(measurement_type: str, co2: int) -> Optional[float]:
     if co2 > 400:
         return round(1.793 * 365, 2)
 
-    if measurement_type == 'nedc':
+    if measurement_type == "nedc":
         return NEDC_MAP[co2]
-    if measurement_type == 'wltp':
+    if measurement_type == "wltp":
         return WLTP_MAP[co2]
     else:
         return None
@@ -903,7 +904,7 @@ def fuel_tax_from_mass(mass: int, fuel_type: str = "diesel") -> Optional[float]:
 
     # you know, float arithmetic
     kg = -(mass // -100)
-    return kg * FUEL_TAX_MAP['diesel']
+    return kg * FUEL_TAX_MAP["diesel"]
 
 
 def configure(config):
@@ -911,38 +912,47 @@ def configure(config):
 
 
 def setup(bot):
-    if 'nettix_token' not in bot.memory:
-        bot.memory['nettix_token'] = tools.SopelMemory()
+    if "nettix_token" not in bot.memory:
+        bot.memory["nettix_token"] = tools.SopelMemory()
 
 
 def refresh_nettix_token(bot) -> bool:
-    res = requests.post('https://auth.nettix.fi/oauth2/token', data={'grant_type': 'client_credentials'})
+    res = requests.post(
+        "https://auth.nettix.fi/oauth2/token", data={"grant_type": "client_credentials"}
+    )
     token = json.loads(res.text)
-    bot.memory['nettix_token']['access_token'] = token.get('access_token', '')
-    bot.memory['nettix_token']['expires_in'] = datetime.datetime.now() + datetime.timedelta(seconds=token.get('expires_in', ''))
+    bot.memory["nettix_token"]["access_token"] = token.get("access_token", "")
+    bot.memory["nettix_token"]["expires_in"] = (
+        datetime.datetime.now()
+        + datetime.timedelta(seconds=token.get("expires_in", ""))
+    )
     return res.status_code == 200
 
 
 def get_nettix_link(bot, licenseplate) -> Optional[str]:
-    if bot.memory['nettix_token'].get('expires_in', datetime.datetime.now()) <= datetime.datetime.now():
+    if (
+        bot.memory["nettix_token"].get("expires_in", datetime.datetime.now())
+        <= datetime.datetime.now()
+    ):
         if not refresh_nettix_token(bot):
             bot.say("oops, nettix api broken")
 
     headers = {
         "Accept": "application/json",
-        "X-Access-Token": bot.memory['nettix_token'].get('access_token')
+        "X-Access-Token": bot.memory["nettix_token"].get("access_token"),
     }
 
-    payload = {
-        'identificationList': licenseplate
-    }
+    payload = {"identificationList": licenseplate}
 
-    res = requests.get('https://api.nettix.fi/rest/car/search', params=payload, headers=headers)
+    res = requests.get(
+        "https://api.nettix.fi/rest/car/search", params=payload, headers=headers
+    )
     nettix_ad = json.loads(res.text)
     if nettix_ad:
-        return nettix_ad[0].get('adUrl')
+        return nettix_ad[0].get("adUrl")
     else:
         return None
+
 
 def get_huutokaupatcom_link(manufacturer, year, licenseplate) -> Optional[str]:
     # for example https://huutokaupat.com/api/net-auctions/list?merkki=audi&sivu=1&vuosimalliMin=2022&vuosimalliMax=2022
@@ -952,26 +962,38 @@ def get_huutokaupatcom_link(manufacturer, year, licenseplate) -> Optional[str]:
     if manufacturer.lower() in HUUTOKAUPAT_MANUFACTURER_MAP:
         manufacturer = HUUTOKAUPAT_MANUFACTURER_MAP[manufacturer.lower()]
     params = {
-        'merkki': manufacturer.lower(),
-        'vuosimalliMin': year - 1,
-        'vuosimalliMax': year + 1,
+        "merkki": manufacturer.lower(),
+        "vuosimalliMin": year - 1,
+        "vuosimalliMax": year + 1,
     }
     res = requests.get(HUUTOKAUPAT_ENDPOINT, params=params).json()
-    huutokaupat_entries = res.get('entries', [])
+    huutokaupat_entries = res.get("entries", [])
     # print(json.dumps(huutokaupat_info, indent=2))
     for entry in huutokaupat_entries:
-        if entry.get('metadata', {}).get("licenseNumber") == licenseplate.upper():
-            return f"https://huutokaupat.com/kohde/{entry.get('id')}/{entry.get('slug')}"
+        if entry.get("metadata", {}).get("licenseNumber") == licenseplate.upper():
+            return (
+                f"https://huutokaupat.com/kohde/{entry.get('id')}/{entry.get('slug')}"
+            )
     return None
 
 
-def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: int = 0, vehicletype: str = "henkiloauto", rawresponse: bool = False) -> Optional[Decimal]:
+def calculate_tax(
+    mass: int,
+    year: int,
+    fuel: str,
+    nedc_co2: int = 0,
+    wltp_co2: int = 0,
+    vehicletype: str = "henkiloauto",
+    rawresponse: bool = False,
+) -> Optional[Decimal]:
     # https://www.traficom.fi/fi/liikenne/tieliikenne/ajoneuvoveron-rakenne-ja-maara
     # we only support henkilöautos
     if vehicletype != "henkiloauto":
         return None
 
-    if (int(mass) <= 2500 and int(year) < 2001) or (int(mass) > 2500 and int(year) < 2002):
+    if (int(mass) <= 2500 and int(year) < 2001) or (
+        int(mass) > 2500 and int(year) < 2002
+    ):
         USE_CO2_TAX = False
     else:
         USE_CO2_TAX = True
@@ -987,9 +1009,9 @@ def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: 
         basetax = base_tax_from_mass(mass) * 365
 
     yearlytax = {}
-    yearlytax['base'] = basetax
+    yearlytax["base"] = basetax
     if fuel == "diesel":
-        yearlytax['fuel'] = round(fuel_tax_from_mass(mass) * 365, 2)
+        yearlytax["fuel"] = round(fuel_tax_from_mass(mass) * 365, 2)
 
     return yearlytax
 
@@ -1004,12 +1026,18 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
-    req = requests.get(MOTONET_ENDPOINT.format(licenseplate=licenseplate.upper()), cookies=cookies, headers=headers)
+    req = requests.get(
+        MOTONET_ENDPOINT.format(licenseplate=licenseplate.upper()),
+        cookies=cookies,
+        headers=headers,
+    )
     motonet_info = json.loads(req.text)
     if rawresponse:
         print(json.dumps(motonet_info, indent=2))
 
-    req = requests.get(BILTEMA_ENDPOINT.format(licenseplate=licenseplate.upper()), headers=headers)
+    req = requests.get(
+        BILTEMA_ENDPOINT.format(licenseplate=licenseplate.upper()), headers=headers
+    )
     try:
         biltema_info = json.loads(req.text)
         if rawresponse:
@@ -1018,17 +1046,21 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         biltema_info = {}
 
     if motonet_info:
-        firstreg = datetime.datetime.strptime(motonet_info.get('registrationDate'), '%d.%m.%Y')
+        firstreg = datetime.datetime.strptime(
+            motonet_info.get("registrationDate"), "%d.%m.%Y"
+        )
     elif biltema_info:
-        firstreg = datetime.datetime.strptime(biltema_info.get('registrationDate'), '%Y%m%d')
+        firstreg = datetime.datetime.strptime(
+            biltema_info.get("registrationDate"), "%Y%m%d"
+        )
     else:
         # we can return and go home, most probably there was no data available
         return None
 
     params = {
-        "vin": motonet_info.get('VIN'),
-        "omamassa": biltema_info.get('weightKg'),
-        "kayttoonottopvm": biltema_info.get('registrationDate')
+        "vin": motonet_info.get("VIN"),
+        "omamassa": biltema_info.get("weightKg"),
+        "kayttoonottopvm": biltema_info.get("registrationDate"),
     }
     try:
         req = requests.post(DSG_ENDPOINT, json=params, timeout=10)
@@ -1036,41 +1068,46 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         count = len(dsg_data)
         if count == 1:
             dsg_data = dsg_data[0]
-            dsg_data['count'] = 1
+            dsg_data["count"] = 1
         else:
             dsg_data = {}
-            dsg_data['count'] = count
+            dsg_data["count"] = count
     except Exception as ex:
         dsg_data = {}
-        dsg_data['exception'] = repr(ex)
-        dsg_data['count'] = 0
+        dsg_data["exception"] = repr(ex)
+        dsg_data["count"] = 0
 
     if rawresponse:
         print(json.dumps(dsg_data))
 
     techdata = {
-        'manufacturer': motonet_info.get('manufacturerName', ""),
-        'model': motonet_info.get('model', "") or biltema_info.get('nameOfTheCar'),
-        'type': motonet_info.get('type', ""),
-        'year': biltema_info.get('modelYear', None) or f'~{firstreg.year}',
-        'power': motonet_info.get('powerKw') or biltema_info.get('powerKw'),
-        'displacement': motonet_info.get('displacement'),
-        'cylindercount': motonet_info.get('cylinders'),
-        'fueltype': motonet_info.get('fuel', '').lower() if motonet_info.get('fuel', '') is not None else biltema_info.get('fuel').lower(),
-        'drivetype': biltema_info.get('impulsionType', '').lower(),
-        'transmission': 'automaatti' if biltema_info.get('gearBox', '').lower() == 'automaattinen' else 'manuaali',
-        'enginecode': motonet_info.get('engineCode', '').replace(' ', '') or biltema_info.get('engineCode'),
-        'weight': biltema_info.get('weightKg'),
-        'maxweight': biltema_info.get('maxWeightKg'),
-        'length': biltema_info.get('lenght'),
-        'registrationdate': firstreg,
-        'vin': motonet_info.get('VIN') or biltema_info.get('chassieNumber'),
-        'suomiauto': True if biltema_info.get('imported') == 'true' else False,
-        'co2': dsg_data.get('Co2'),
-        'location': dsg_data.get('kunta_fi'),
-        'color': dsg_data.get('vari_fi'),
-        'mileage': dsg_data.get('matkamittarilukema'),
-        'dsg_data_count': dsg_data.get('count', 0)
+        "manufacturer": motonet_info.get("manufacturerName", ""),
+        "model": motonet_info.get("model", "") or biltema_info.get("nameOfTheCar"),
+        "type": motonet_info.get("type", ""),
+        "year": biltema_info.get("modelYear", None) or f"~{firstreg.year}",
+        "power": motonet_info.get("powerKw") or biltema_info.get("powerKw"),
+        "displacement": motonet_info.get("displacement"),
+        "cylindercount": motonet_info.get("cylinders"),
+        "fueltype": motonet_info.get("fuel", "").lower()
+        if motonet_info.get("fuel", "") is not None
+        else biltema_info.get("fuel").lower(),
+        "drivetype": biltema_info.get("impulsionType", "").lower(),
+        "transmission": "automaatti"
+        if biltema_info.get("gearBox", "").lower() == "automaattinen"
+        else "manuaali",
+        "enginecode": motonet_info.get("engineCode", "").replace(" ", "")
+        or biltema_info.get("engineCode"),
+        "weight": biltema_info.get("weightKg"),
+        "maxweight": biltema_info.get("maxWeightKg"),
+        "length": biltema_info.get("lenght"),
+        "registrationdate": firstreg,
+        "vin": motonet_info.get("VIN") or biltema_info.get("chassieNumber"),
+        "suomiauto": True if biltema_info.get("imported") == "true" else False,
+        "co2": dsg_data.get("Co2"),
+        "location": dsg_data.get("kunta_fi"),
+        "color": dsg_data.get("vari_fi"),
+        "mileage": dsg_data.get("matkamittarilukema"),
+        "dsg_data_count": dsg_data.get("count", 0),
     }
 
     return techdata
@@ -1078,20 +1115,22 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
 
 def get_leima(licenseplate: str) -> Optional[str]:
     # new! a feature to scrape internet and get the next inspection date
-    req = requests.post(LEIMA_ENDPOINT, json={'registrationNumber': licenseplate.upper()})
+    req = requests.post(
+        LEIMA_ENDPOINT, json={"registrationNumber": licenseplate.upper()}
+    )
     leima_info = json.loads(req.text)
     if leima_info:
-        return leima_info.get('nextInspectionBefore', '')
+        return leima_info.get("nextInspectionBefore", "")
     return None
 
 
-@plugin.rule(r'!leima\s*([a-zA-Z0-9\-]*)\s*([0-9\-]*)')
+@plugin.rule(r"!leima\s*([a-zA-Z0-9\-]*)\s*([0-9\-]*)")
 def handle_leima(bot, trigger) -> None:
     # either set the next leima date for a plate or display the next one for the plate
     # old stuff, maybe get rid of this if the new scraping works well enough
     state = db.SopelDB(bot.config)
     chan = state.get_channel_slug(trigger.sender)
-    leimas = state.get_channel_value(chan, 'leima', {})
+    leimas = state.get_channel_value(chan, "leima", {})
 
     # TODO? normalize channel slug to avoid problems with storage later on
     licenseplate = trigger.group(1)
@@ -1104,15 +1143,19 @@ def handle_leima(bot, trigger) -> None:
     if new_date := trigger.group(2):
         leimas[licenseplate] = new_date
         # sopel channel values need to be json serializable so we'll parse this as datetime later
-        state.set_channel_value(chan, 'leima', leimas)
+        state.set_channel_value(chan, "leima", leimas)
         return bot.say(f"{licenseplate.upper()}: seuraava katsastus: {new_date}")
 
     # no new date, just display the current one
     leima_date = get_leima(licenseplate)
     if leima_date:
         try:
-            time_to_leima = datetime.datetime.fromisoformat(leima_date) - datetime.datetime.today()
-            bot.say(f"{licenseplate.upper()}: Katsastettava viimeistään {leima_date} ({time_to_leima.days} päivää)")
+            time_to_leima = (
+                datetime.datetime.fromisoformat(leima_date) - datetime.datetime.today()
+            )
+            bot.say(
+                f"{licenseplate.upper()}: Katsastettava viimeistään {leima_date} ({time_to_leima.days} päivää)"
+            )
             return
         except ValueError:
             bot.say(f"Tuli hassua dataa netistä: {leima_date}...")
@@ -1121,20 +1164,25 @@ def handle_leima(bot, trigger) -> None:
     if licenseplate in leimas:
         leima_date = leimas.get(licenseplate)
         try:
-            time_to_leima = datetime.datetime.fromisoformat(leima_date) - datetime.datetime.today()
-            bot.say(f"{licenseplate.upper()}: Katsastettava viimeistään {leima_date} ({time_to_leima.days} päivää)")
+            time_to_leima = (
+                datetime.datetime.fromisoformat(leima_date) - datetime.datetime.today()
+            )
+            bot.say(
+                f"{licenseplate.upper()}: Katsastettava viimeistään {leima_date} ({time_to_leima.days} päivää)"
+            )
         except ValueError:
             bot.say(f"Erikoinen päivämäärä toi {leima_date}...")
     else:
         bot.say(f"Ei oo kerrottu milloin {licenseplate.upper()} pitää katsastaa :(")
 
 
-@plugin.commands('rekisteri')
-@plugin.commands('rekkari')
+@plugin.commands("rekisteri")
+@plugin.commands("rekkari")
 @plugin.example(
-    '!rekisteri bey-830',
-    'BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg, pituus 4480 mm. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto',
-    online=True)
+    "!rekisteri bey-830",
+    "BEY-830: VOLVO S40 II (MS) 2.0 D 2008. 100 kW 1998 cm³ 4-syl diesel etuveto (D4204T). Ajoneuvovero 609,55 EUR/vuosi, CO² 153 g/km (NEDC), kulutus 5,8/4,8/7,6 l/100 km. Oma/kokonaismassa 1459/1940 kg, pituus 4480 mm. Ensirekisteröinti 4.10.2007, VIN YV1MS754182368635, suomiauto",
+    online=True,
+)
 def print_technical(bot, trigger) -> None:
     licenseplate = trigger.group(2)
     if not licenseplate:
@@ -1142,16 +1190,21 @@ def print_technical(bot, trigger) -> None:
     techdata = get_technical(licenseplate)
     if techdata is not None:
         try:
-            taxdata = calculate_tax(int(techdata.get('maxweight')), int(techdata.get('year')), techdata.get('fueltype'), int(techdata.get('co2')))
+            taxdata = calculate_tax(
+                int(techdata.get("maxweight")),
+                int(techdata.get("year")),
+                techdata.get("fueltype"),
+                int(techdata.get("co2")),
+            )
         except Exception:
             taxdata = None
 
         if taxdata is not None:
-            if taxdata.get('fuel'):
+            if taxdata.get("fuel"):
                 emissionspart = f" Ajoneuvovero {taxdata.get('fuel')} + {taxdata.get('base')} € vuodessa"
             else:
                 emissionspart = f" Ajoneuvovero {taxdata.get('base')} € vuodessa"
-            if techdata.get('co2'):
+            if techdata.get("co2"):
                 emissionspart += f", CO² {techdata.get('co2')} g/km."
             else:
                 emissionspart = ", ei päästöjä."
@@ -1164,26 +1217,30 @@ def print_technical(bot, trigger) -> None:
         else:
             fuelpart = f"{techdata.get('fueltype')}"
 
-        if techdata.get('weight'):
+        if techdata.get("weight"):
             masspart = f" Oma/kokonaismassa {techdata.get('weight')}/{techdata.get('maxweight')} kg, pituus {techdata.get('length')} mm."
         else:
             masspart = ""
         result = f"{licenseplate.upper()}: {techdata.get('manufacturer')} {techdata.get('model')} {techdata.get('type')} {techdata.get('year')}. {techdata.get('power')} kW {fuelpart} {techdata.get('transmission')} {techdata.get('drivetype')} ({techdata.get('enginecode')}).{emissionspart}{masspart} Ensirekisteröinti {techdata.get('registrationdate').strftime('%-d.%-m.%Y')}, VIN {techdata.get('vin')}{', suomiauto' if techdata.get('suomiauto') else ''}."
 
-        if techdata.get('dsg_data_count') == 1:
+        if techdata.get("dsg_data_count") == 1:
             result += f" Väri {techdata.get('color').lower()} ja koti {techdata.get('location')}. Ajettu {techdata.get('mileage')} km."
-        elif techdata.get('dsg_data_count') > 1:
+        elif techdata.get("dsg_data_count") > 1:
             result += f" Traficomin datassa {techdata.get('dsg_data_count')} samanlaista autoa."
         bot.say(result)
     else:
-        bot.say(f"{licenseplate.upper()}: Varmaan joku romu mihin ei saa enää ees varaosia :-(")
+        bot.say(
+            f"{licenseplate.upper()}: Varmaan joku romu mihin ei saa enää ees varaosia :-("
+        )
 
     ad_links = []
     nettiauto_url = get_nettix_link(bot, licenseplate)
     if nettiauto_url:
         ad_links.append(nettiauto_url)
-    if 'manufacturer' in techdata and 'year' in techdata:
-        huutokaupatcom_url = get_huutokaupatcom_link(techdata.get('manufacturer'), int(techdata.get('year')), licenseplate)
+    if "manufacturer" in techdata and "year" in techdata:
+        huutokaupatcom_url = get_huutokaupatcom_link(
+            techdata.get("manufacturer"), int(techdata.get("year")), licenseplate
+        )
         if huutokaupatcom_url:
             ad_links.append(huutokaupatcom_url)
     if ad_links:
@@ -1196,10 +1253,9 @@ def print_technical(bot, trigger) -> None:
 if __name__ == "__main__":
     try:
         from sopel.test_tools import run_example_tests
+
         run_example_tests(__file__)
     except Exception:
         pass
 
-    # print(get_technical(licenseplate="oxg-353", rawresponse=True))
-    # print(get_emissions(licenseplate="gfs-10"))
-    print(get_leima("oxg-353"))
+    # print(get_huutokaupatcom_link("volkswagen", 2015, "flp-912"))
