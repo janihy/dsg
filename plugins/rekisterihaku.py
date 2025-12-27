@@ -13,6 +13,7 @@ import datetime
 
 BILTEMA_ENDPOINT = 'https://reko.biltema.com/v1/Reko/carinfo/{licenseplate}/3/fi'
 MOTONET_ENDPOINT = 'https://www.motonet.fi/api/vehicleInfo/registrationNumber/FI?locale=fi&registrationNumber={licenseplate}'
+HUUTOKAUPAT_ENDPOINT = 'https://huutokaupat.com/api/net-auctions/list'
 DSG_ENDPOINT = "http://localhost:8000"
 LEIMA_ENDPOINT = "https://ajanvaraus.idealinspect.fi/api/chains/107/stations/307/vehicles/search"
 DEFAULT_HEADERS: Dict[str, str] = {}
@@ -940,6 +941,22 @@ def get_nettix_link(bot, licenseplate) -> Optional[str]:
     else:
         return None
 
+def get_huutokaupatcom_link(manufacturer, year, licenseplate) -> Optional[str]:
+    # for example https://huutokaupat.com/api/net-auctions/list?merkki=audi&sivu=1&vuosimalliMin=2022&vuosimalliMax=2022
+    # huutokaupat.com public api does not allow us to search by license plate directly, so we need to get some listings and filter them
+    params = {
+        'merkki': manufacturer.lower(),
+        'vuosimalliMin': year - 1,
+        'vuosimalliMax': year + 1,
+    }
+    res = requests.get(HUUTOKAUPAT_ENDPOINT, params=params).json()
+    huutokaupat_entries = res.get('entries', [])
+    # print(json.dumps(huutokaupat_info, indent=2))
+    for entry in huutokaupat_entries:
+        if entry.get('metadata', {}).get("licenseNumber") == licenseplate.upper():
+            return f"https://huutokaupat.com/kohde/{entry.get('id')}/{entry.get('slug')}"
+    return None
+
 
 def calculate_tax(mass: int, year: int, fuel: str, nedc_co2: int = 0, wltp_co2: int = 0, vehicletype: str = "henkiloauto", rawresponse: bool = False) -> Optional[Decimal]:
     # https://www.traficom.fi/fi/liikenne/tieliikenne/ajoneuvoveron-rakenne-ja-maara
@@ -1158,6 +1175,10 @@ def print_technical(bot, trigger) -> None:
     nettiauto_url = get_nettix_link(bot, licenseplate)
     if nettiauto_url:
         ad_links.append(nettiauto_url)
+    if 'manufacturer' in techdata and 'year' in techdata:
+        huutokaupatcom_url = get_huutokaupatcom_link(techdata.get('manufacturer'), int(techdata.get('year')), licenseplate)
+        if huutokaupatcom_url:
+            ad_links.append(huutokaupatcom_url)
     if ad_links:
         if techdata is not None:
             bot.say(f"On muuten myynnissä: {' ja '.join(ad_links)}")
