@@ -1088,7 +1088,8 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "manufacturer": motonet_info.get("manufacturerName", ""),
         "model": motonet_info.get("model", "") or biltema_info.get("nameOfTheCar"),
         "type": motonet_info.get("type", ""),
-        "year": biltema_info.get("modelYear", None) or f"~{firstreg.year}",
+        "year": biltema_info.get("modelYear", firstreg.year),
+        "year_is_approximate": biltema_info.get("modelYear") == None,
         "power": motonet_info.get("powerKw") or biltema_info.get("powerKw"),
         "displacement": motonet_info.get("displacement"),
         "cylindercount": motonet_info.get("cylinders"),
@@ -1113,6 +1114,11 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "mileage": dsg_data.get("matkamittarilukema"),
         "dsg_data_count": dsg_data.get("count", 0),
     }
+
+    # hack this
+    if techdata.get("fueltype") == "sähkö":
+        techdata["transmission"] = "automaatti"
+        techdata["co2"] = 0
 
     return techdata
 
