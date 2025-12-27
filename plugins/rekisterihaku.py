@@ -1190,7 +1190,8 @@ def handle_leima(bot, trigger) -> None:
 def print_technical(bot, trigger) -> None:
     licenseplate = trigger.group(2)
     if not licenseplate:
-        return bot.say("Anna joku rekisteri.")
+        res = requests.get(DSG_ENDPOINT + "/stats").json()
+        return bot.say(f"Autoja on väliltä {res.get('min_date')} - {res.get('max_date')}.")
     techdata = get_technical(licenseplate)
     if techdata is not None:
         try:
