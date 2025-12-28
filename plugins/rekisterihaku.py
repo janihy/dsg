@@ -839,54 +839,15 @@ DEFAULT_HEADERS = {
 
 
 def base_tax_from_mass(mass: int) -> Optional[float]:
+    start = 0.468
     if mass <= 1300:
-        return 0.610
-    elif mass > 1300 and mass <= 1400:
-        return 0.640
-    elif mass > 1400 and mass <= 1500:
-        return 0.672
-    elif mass > 1500 and mass <= 1600:
-        return 0.706
-    elif mass > 1600 and mass <= 1700:
-        return 0.742
-    elif mass > 1700 and mass <= 1800:
-        return 0.780
-    elif mass > 1800 and mass <= 1900:
-        return 0.820
-    elif mass > 1900 and mass <= 2000:
-        return 0.862
-    elif mass > 2000 and mass <= 2100:
-        return 0.906
-    elif mass > 2100 and mass <= 2200:
-        return 0.952
-    elif mass > 2200 and mass <= 2300:
-        return 1.000
-    elif mass > 2300 and mass <= 2400:
-        return 1.050
-    elif mass > 2400 and mass <= 2500:
-        return 1.102
-    elif mass > 2500 and mass <= 2600:
-        return 1.156
-    elif mass > 2600 and mass <= 2700:
-        return 1.212
-    elif mass > 2700 and mass <= 2800:
-        return 1.270
-    elif mass > 2800 and mass <= 2900:
-        return 1.330
-    elif mass > 2900 and mass <= 3000:
-        return 1.392
-    elif mass > 3000 and mass <= 3100:
-        return 1.456
-    elif mass > 3100 and mass <= 3200:
-        return 1.522
-    elif mass > 3200 and mass <= 3300:
-        return 1.590
-    elif mass > 3300 and mass <= 3400:
-        return 1.660
-    elif mass > 3400:
-        return 1.732
+        k = 0
+    elif mass > 1300 and mass <= 3400:
+        k = ((mass-1) // 100 - 12)
     else:
-        return None
+        k = 22
+    total = start + 0.001*k**2 + 0.029*k
+    return round(total * 365, 2)
 
 
 def base_tax_from_co2(measurement_type: str, co2: int) -> Optional[float]:

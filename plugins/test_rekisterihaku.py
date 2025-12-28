@@ -1,8 +1,18 @@
 import unittest
-from rekisterihaku import *
+from rekisterihaku import calculate_tax, base_tax_from_mass
 
+# calculate_tax(weight_kg, first_registration_year, fuel_type, co2_method=None, co2=None)
+# for reference see traficom calculator:
+# https://eservices.traficom.fi/AutoilijanPalvelut/Ajoneuvoverolaskuri?langId=fi
 
 class TestVehicleTaxCalculator(unittest.TestCase):
+    def test_base_tax_from_mass(self):
+        self.assertEqual(base_tax_from_mass(0), 170.82)
+        self.assertEqual(base_tax_from_mass(1337), 181.77)
+        self.assertEqual(base_tax_from_mass(1500), 193.45)
+        self.assertEqual(base_tax_from_mass(2100), 278.86)
+        self.assertEqual(base_tax_from_mass(4000), 580.35)
+        self.assertEqual(base_tax_from_mass(7000), 580.35)
 
     def test_calculate_old_gasoline_nedc_tax(self):
         tax = calculate_tax(2100, 2000, "bensiini")
