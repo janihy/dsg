@@ -1169,7 +1169,7 @@ def print_technical(bot, trigger) -> None:
             if techdata.get("co2"):
                 emissionspart += f", CO² {techdata.get('co2')} g/km."
             else:
-                emissionspart = ", ei päästöjä."
+                emissionspart += ", ei päästöjä."
         else:
             emissionspart = " Ei päästötietoja."
 
