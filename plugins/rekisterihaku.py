@@ -829,6 +829,7 @@ WLTP_MAP = {
 
 FUEL_TAX_MAP = {
     "diesel": 0.055,
+    "sähkö": 0.019,
 }
 
 HUUTOKAUPAT_MANUFACTURER_MAP = {"vw": "volkswagen"}
@@ -847,12 +848,12 @@ def base_tax_from_mass(mass: int) -> Optional[float]:
     else:
         k = 22
     total = start + 0.001*k**2 + 0.029*k
-    return round(total * 365, 2)
+    return round(total * 365, 3)
 
 
 def base_tax_from_co2(measurement_type: str, co2: int) -> Optional[float]:
     if co2 > 400:
-        return round(1.793 * 365, 2)
+        return round(1.793 * 365, 3)
 
     if measurement_type == "nedc":
         return NEDC_MAP[co2]
@@ -863,12 +864,9 @@ def base_tax_from_co2(measurement_type: str, co2: int) -> Optional[float]:
 
 
 def fuel_tax_from_mass(mass: int, fuel_type: str = "diesel") -> Optional[float]:
-    if fuel_type != "diesel":
-        return None
-
     # you know, float arithmetic
     kg = -(mass // -100)
-    return kg * FUEL_TAX_MAP["diesel"]
+    return kg * FUEL_TAX_MAP[fuel_type]
 
 
 def configure(config):
@@ -934,35 +932,33 @@ def calculate_tax(
     mass: int,
     year: int,
     fuel: str,
-    nedc_co2: int = 0,
-    wltp_co2: int = 0,
+    co2_method: str = "wltp",
+    co2: int = 0,
     vehicletype: str = "henkiloauto",
     rawresponse: bool = False,
-) -> Optional[Decimal]:
-    # https://www.traficom.fi/fi/liikenne/tieliikenne/ajoneuvoveron-rakenne-ja-maara
+) -> Optional[Dict[str, Decimal]]:
+    # https://www.traficom.fi/fi/liikenne/autoilijat/ajoneuvon-verotus/ajoneuvoveron-maara#75745-1
+
     # we only support henkilöautos
     if vehicletype != "henkiloauto":
         return None
 
-    if (int(mass) <= 2500 and int(year) < 2001) or (int(mass) > 2500 and int(year) < 2002):
+    USE_CO2_TAX = True
+    if (int(mass) <= 2500 and int(year) < 2001) or (int(mass) > 2500 and int(year) < 2002) or co2 == 0:
         USE_CO2_TAX = False
-    else:
-        USE_CO2_TAX = True
 
     if USE_CO2_TAX:
-        if nedc_co2:
-            basetax = base_tax_from_co2("nedc", nedc_co2)
-        elif wltp_co2:
-            basetax = base_tax_from_co2("wltp", wltp_co2)
-        else:
-            basetax = base_tax_from_mass(mass) * 365
+        basetax = base_tax_from_co2(co2_method, co2)
+    elif fuel == "sähkö":
+        # FIXME: it's actually before 2021-09-30 but close enough
+        basetax = 106.215 if year < 2022 else 171.185
     else:
-        basetax = base_tax_from_mass(mass) * 365
+        basetax = base_tax_from_mass(mass)
 
     yearlytax = {}
     yearlytax["base"] = basetax
-    if fuel == "diesel":
-        yearlytax["fuel"] = round(fuel_tax_from_mass(mass) * 365, 2)
+    if fuel == "diesel" or fuel == "sähkö":
+        yearlytax["fuel"] = round(fuel_tax_from_mass(mass=mass, fuel_type=fuel) * 365, 3)
 
     return yearlytax
 
@@ -989,8 +985,10 @@ def get_motonet_info(licenseplate: str) -> Optional[dict]:
 
 
 def get_biltema_info(licenseplate: str) -> Optional[dict]:
-    reko = requests.get(REKO_ENDPOINT.format(licenseplate=licenseplate), headers=DEFAULT_HEADERS).json()
-
+    try:
+        reko = requests.get(REKO_ENDPOINT.format(licenseplate=licenseplate), headers=DEFAULT_HEADERS).json()
+    except Exception:
+        return {}
     # reko2 = requests.get(
     #     REKO2_ENDPOINT.format(licenseplate=licenseplate),
     #     headers=DEFAULT_HEADERS,
@@ -1029,7 +1027,7 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "transmission": "automaatti" if biltema_info.get("gearBox", "").lower() == "automaattinen" else "manuaali",
         "enginecode": motonet_info.get("engineCode", "").replace(" ", "") or biltema_info.get("engineCode"),
         "weight": biltema_info.get("weightKg"),
-        "maxweight": biltema_info.get("maxWeightKg"),
+        "maxweight": biltema_info.get("maxWeightKg", 0),
         "length": biltema_info.get("lenght"),
         "registrationdate": firstreg,
         "vin": motonet_info.get("VIN") or biltema_info.get("chassieNumber"),
@@ -1146,10 +1144,10 @@ def print_technical(bot, trigger) -> None:
     if techdata is not None:
         try:
             taxdata = calculate_tax(
-                int(techdata.get("maxweight")),
-                int(techdata.get("year")),
-                techdata.get("fueltype"),
-                int(techdata.get("co2")),
+                mass=int(techdata.get("maxweight")),
+                year=int(techdata.get("year")),
+                fuel=techdata.get("fueltype"),
+                co2=int(techdata.get("co2")),
             )
         except Exception:
             taxdata = None
