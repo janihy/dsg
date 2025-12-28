@@ -14,6 +14,11 @@ class TestVehicleTaxCalculator(unittest.TestCase):
         self.assertEqual(base_tax_from_mass(4000), 580.35)
         self.assertEqual(base_tax_from_mass(7000), 580.35)
 
+    def test_calculate_malformed_input(self):
+        tax = calculate_tax("2100", "2000", "bensiini", co2_method="nedc", co2="bad")
+        self.assertEqual(tax["base"], 278.86)
+        self.assertEqual(tax.get("fuel", 0), 0)
+
     def test_calculate_old_gasoline_tax(self):
         tax = calculate_tax(2100, 2000, "bensiini")
         self.assertEqual(tax["base"], 278.86)

@@ -939,12 +939,20 @@ def calculate_tax(
 ) -> Optional[Dict[str, Decimal]]:
     # https://www.traficom.fi/fi/liikenne/autoilijat/ajoneuvon-verotus/ajoneuvoveron-maara#75745-1
 
+    mass = int(mass)
+    year = int(year)
+    try:
+        # sometimes co2 comes as None or ''
+        co2 = int(co2)
+    except Exception:
+        co2 = 0
+
     # we only support henkilöautos
     if vehicletype != "henkiloauto":
         return None
 
     USE_CO2_TAX = True
-    if (int(mass) <= 2500 and int(year) < 2001) or (int(mass) > 2500 and int(year) < 2002) or co2 == 0:
+    if (mass <= 2500 and year < 2001) or (mass > 2500 and year < 2002) or co2 == 0:
         USE_CO2_TAX = False
 
     if USE_CO2_TAX:
@@ -1144,10 +1152,11 @@ def print_technical(bot, trigger) -> None:
     if techdata is not None:
         try:
             taxdata = calculate_tax(
-                mass=int(techdata.get("maxweight")),
-                year=int(techdata.get("year")),
+                mass=techdata.get("maxweight"),
+                year=techdata.get("year"),
                 fuel=techdata.get("fueltype"),
-                co2=int(techdata.get("co2")),
+                co2_method="wltp",
+                co2=techdata.get("co2", 0),
             )
         except Exception:
             taxdata = None
