@@ -1067,6 +1067,9 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
         "color": dsg_data.get("vari_fi"),
         "mileage": dsg_data.get("matkamittarilukema"),
         "dsg_data_count": dsg_data.get("count", 0),
+        "weight": dsg_data.get("omamassa", None),
+        "maxweight": dsg_data.get("tieliikSuurSallKokmassa", None),
+        "length": dsg_data.get("ajonKokPituus", None),
     }
 
     if rawresponse:
