@@ -1,6 +1,6 @@
 # coding=utf8
 """
-made by tuplis 2021-2025
+made by tuplis 2021-2026
 """
 
 from sopel import plugin, tools, db
@@ -1044,8 +1044,7 @@ def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict
 
     filter = {
         "vin": techdata.get("vin"),
-        "omamassa": techdata.get("weight"),
-        "kayttoonottopvm": biltema_info.get("registrationDate"),
+        "kayttoonottopvm": techdata.get("registrationdate").strftime("%Y%m%d") if techdata.get("registrationdate") else None,
     }
 
     try:
