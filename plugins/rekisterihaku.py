@@ -995,14 +995,15 @@ def get_motonet_info(licenseplate: str) -> Optional[dict]:
 def get_biltema_info(licenseplate: str) -> Optional[dict]:
     try:
         reko = requests.get(REKO_ENDPOINT.format(licenseplate=licenseplate), headers=DEFAULT_HEADERS).json()
+        reko2 = requests.get(
+            REKO2_ENDPOINT.format(licenseplate=licenseplate),
+            headers=DEFAULT_HEADERS,
+            params={"market": "3", "language": "FI"},
+        ).json()
     except Exception as e:
         print(f"error fetching reko data for {licenseplate}")
         reko = {}
-    reko2 = requests.get(
-        REKO2_ENDPOINT.format(licenseplate=licenseplate),
-        headers=DEFAULT_HEADERS,
-        params={"market": "3", "language": "FI"},
-    ).json()
+        reko2 = {}
     print(json.dumps(reko2, indent=2))
     if reko:
         return reko
