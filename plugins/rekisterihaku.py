@@ -1211,7 +1211,7 @@ def print_technical(bot, trigger) -> None:
     nettiauto_url = get_nettix_link(bot, licenseplate)
     if nettiauto_url:
         ad_links.append(nettiauto_url)
-    if "manufacturer" in techdata and "year" in techdata:
+    if techdata and "manufacturer" in techdata and "year" in techdata:
         huutokaupatcom_url = get_huutokaupatcom_link(
             techdata.get("manufacturer"), int(techdata.get("year")), licenseplate
         )
