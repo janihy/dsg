@@ -995,32 +995,40 @@ def get_motonet_info(licenseplate: str) -> Optional[dict]:
 def get_biltema_info(licenseplate: str) -> Optional[dict]:
     try:
         reko = requests.get(REKO_ENDPOINT.format(licenseplate=licenseplate), headers=DEFAULT_HEADERS).json()
-    except Exception:
-        return {}
-    # reko2 = requests.get(
-    #     REKO2_ENDPOINT.format(licenseplate=licenseplate),
-    #     headers=DEFAULT_HEADERS,
-    #     params={"market": "3", "language": "FI"},
-    # ).json()
-    # print(json.dumps(reko2, indent=2))
-    return reko
+    except Exception as e:
+        print(f"error fetching reko data for {licenseplate}")
+        reko = {}
+    reko2 = requests.get(
+        REKO2_ENDPOINT.format(licenseplate=licenseplate),
+        headers=DEFAULT_HEADERS,
+        params={"market": "3", "language": "FI"},
+    ).json()
+    print(json.dumps(reko2, indent=2))
+    if reko:
+        return reko
+    else:
+        return reko2
 
 
 def get_technical(licenseplate: str, rawresponse: bool = False) -> Optional[dict]:
     licenseplate = licenseplate.upper()
-    motonet_info = get_motonet_info(licenseplate)
+    motonet_info = get_motonet_info(licenseplate) or {}
     biltema_info = get_biltema_info(licenseplate)
 
     if motonet_info:
         firstreg = datetime.datetime.strptime(motonet_info.get("registrationDate"), "%d.%m.%Y")
     elif biltema_info:
-        firstreg = datetime.datetime.strptime(biltema_info.get("registrationDate"), "%Y%m%d")
+        try:
+            firstreg = datetime.datetime.strptime(biltema_info.get("registrationDate"), "%Y%m%d")
+        except Exception:
+            firstreg = datetime.datetime.strptime(biltema_info.get("vehicleInfo", {}).get("registrationDat"), "%Y-%m-%d")
     else:
         # we can return and go home, most probably there was no data available
+        print("no firstreg available for this license plate")
         return None
 
     techdata = {
-        "manufacturer": motonet_info.get("manufacturerName", ""),
+        "manufacturer": motonet_info.get("manufacturerName", "") or biltema_info.get("manufacturer"),
         "model": motonet_info.get("model", "") or biltema_info.get("nameOfTheCar"),
         "type": motonet_info.get("type", ""),
         "year": biltema_info.get("modelYear", firstreg.year),
@@ -1161,6 +1169,7 @@ def print_technical(bot, trigger) -> None:
                 co2=techdata.get("co2", 0),
             )
         except Exception:
+            print("skipped tax calculation for {licenseplate} due to bad data")
             taxdata = None
 
         if taxdata is not None:
@@ -1222,4 +1231,17 @@ if __name__ == "__main__":
     except Exception:
         pass
 
-    # print(get_huutokaupatcom_link("volkswagen", 2015, "flp-912"))
+    #print(get_huutokaupatcom_link("volkswagen", 2015, "gkb-401"))
+    licenseplate = "gkb-401"
+    techdata = get_technical(licenseplate, rawresponse=True)
+    print(techdata)
+    #techdata = print_technical(licenseplate)
+    # print(techdata)
+    # if techdata is not None:
+    #     taxdata = calculate_tax(
+    #         techdata.get("maxweight"),
+    #         techdata.get("year"),
+    #         techdata.get("fueltype"),
+    #         techdata.get("co2"),
+    #     )
+    # print(taxdata)
