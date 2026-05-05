@@ -48,6 +48,10 @@ def test_euribor_with_margin_to_str():
     data = TEST_EURIBOR_RATES | {'margin': 0.5}
     assert euribor_data_to_str(data) == "12 kk: 0.123 ja 3 kk: 0.456, mutta sulle 0.623 ja 0.956"
 
+def test_euribor_with_margin_to_str():
+    data = TEST_EURIBOR_RATES | {'margin': 0.43}
+    assert euribor_data_to_str(data) == "12 kk: 0.123 ja 3 kk: 0.456, mutta sulle 0.553 ja 0.886"
+
 def test_euribor_command(configfactory, botfactory, ircfactory, userfactory, responses):
     settings = configfactory(TEST_NAME, TEST_CONFIG)
     bot = botfactory.preloaded(settings, ['euribor'])

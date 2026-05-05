@@ -7,6 +7,7 @@
 # https://www.suomenpankki.fi/fi/tilastot/korot-ja-valuuttakurssit/euriborkorot/
 
 from sopel.plugin import command
+from decimal import Decimal
 
 import re
 import requests
@@ -35,7 +36,8 @@ def get_euribor_rates():
 def euribor_data_to_str(data):
     rates = f"12 kk: {data['12 kk']} ja 3 kk: {data['3 kk']}"
     if "margin" in data:
-        data = {k: float(v) + data["margin"] for k, v in data.items()}
+        margin = Decimal(str(data["margin"]))
+        data = {k: str(Decimal(v) + margin) for k, v in data.items() if k != "margin"}
         rates += f", mutta sulle {data['12 kk']} ja {data['3 kk']}"
     return rates
 
