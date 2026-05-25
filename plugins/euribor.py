@@ -6,6 +6,7 @@
 # Euribor
 # https://www.suomenpankki.fi/fi/tilastot/korot-ja-valuuttakurssit/euriborkorot/
 
+from sopel import db
 from sopel.plugin import command
 from decimal import Decimal
 
@@ -45,7 +46,13 @@ def euribor_data_to_str(data):
 @command('euribor')
 def say_euribor(bot, trigger):
     data = get_euribor_rates()
+    state = db.SopelDB(bot.config)
     if trigger.group(2):
-        data["margin"] = float(trigger.group(2))
+        margin = float(trigger.group(2))
+        state.set_nick_value(trigger.nick, 'euribor_margin', margin)
+    else:
+        margin = state.get_nick_value(trigger.nick, 'euribor_margin')
+    if margin:
+        data["margin"] = margin
     out = euribor_data_to_str(data)
     bot.say(out)
