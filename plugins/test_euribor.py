@@ -1,10 +1,12 @@
 from os import getenv
+
 import pytest
 import pytest_responses
-
 from sopel.tests import rawlist
+
 from .euribor import *
-TEST_NAME = 'test.cfg'
+
+TEST_NAME = "test.cfg"
 TEST_CONFIG = """
 [core]
 owner = Tuplis
@@ -13,12 +15,15 @@ extra = .
 """
 
 TEST_EURIBOR_RATES = {
-    '12 kk': '0.123',
-    '3 kk': '0.456',
+    "12 kk": "0.123",
+    "3 kk": "0.456",
 }
 
 MOCK_EURIBOR_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
 <Report xmlns="euribor_korot_today_xml_fi">
+<data provider="Reuters">
+<period_Collection>
+<period value="2024-11-15">
 <matrix1_Title_Collection>
 <rate name="1 vko (tod.pv/360)"><intr value="2,532" /></rate>
 <rate name="1 kk (tod.pv/360)"><intr value="2,446" /></rate>
@@ -27,8 +32,12 @@ MOCK_EURIBOR_RESPONSE = """<?xml version="1.0" encoding="utf-8"?>
 <rate name="6 kk (tod.pv/360)"><intr value="2,393" /></rate>
 <rate name="12 kk (tod.pv/360)"><intr value="2,449" /></rate>
 </matrix1_Title_Collection>
+</period>
+</period_Collection>
+</data>
 </Report>
 """
+
 
 def test_get_euribor_rates(responses):
     responses.get(
@@ -37,26 +46,42 @@ def test_get_euribor_rates(responses):
         status=200,
     )
 
-    rates = get_euribor_rates()
-    assert rates is not None
+    result = get_euribor_rates()
+    assert result is not None
+    rates, date = result
     assert len(rates) == 6
+    assert date == "2024-11-15"
+
 
 def test_euribor_data_to_str():
-    assert euribor_data_to_str(TEST_EURIBOR_RATES) == "12 kk: 0.123 ja 3 kk: 0.456"
+    assert euribor_data_to_str(TEST_EURIBOR_RATES, "2024-11-15") == "Euribor (2024-11-15): 12 kk: 0.123 ja 3 kk: 0.456"
+
+
+def test_euribor_data_to_str_no_date():
+    assert euribor_data_to_str(TEST_EURIBOR_RATES) == "Euribor: 12 kk: 0.123 ja 3 kk: 0.456"
+
 
 def test_euribor_with_margin_to_str():
-    data = TEST_EURIBOR_RATES | {'margin': 0.5}
-    assert euribor_data_to_str(data) == "12 kk: 0.123 ja 3 kk: 0.456, mutta sulle 0.623 ja 0.956"
+    data = TEST_EURIBOR_RATES | {"margin": 0.5}
+    assert (
+        euribor_data_to_str(data, "2024-11-15")
+        == "Euribor (2024-11-15): 12 kk: 0.123 ja 3 kk: 0.456, mutta sulle 0.623 ja 0.956"
+    )
 
-def test_euribor_with_margin_to_str():
-    data = TEST_EURIBOR_RATES | {'margin': 0.43}
-    assert euribor_data_to_str(data) == "12 kk: 0.123 ja 3 kk: 0.456, mutta sulle 0.553 ja 0.886"
+
+def test_euribor_with_margin_to_str_2():
+    data = TEST_EURIBOR_RATES | {"margin": 0.43}
+    assert (
+        euribor_data_to_str(data, "2024-11-15")
+        == "Euribor (2024-11-15): 12 kk: 0.123 ja 3 kk: 0.456, mutta sulle 0.553 ja 0.886"
+    )
+
 
 def test_euribor_command(configfactory, botfactory, ircfactory, userfactory, responses):
     settings = configfactory(TEST_NAME, TEST_CONFIG)
-    bot = botfactory.preloaded(settings, ['euribor'])
+    bot = botfactory.preloaded(settings, ["euribor"])
     irc = ircfactory(bot)
-    user = userfactory('Tuplis')
+    user = userfactory("Tuplis")
 
     responses.get(
         EURIBOR_ENDPOINT,
@@ -64,16 +89,15 @@ def test_euribor_command(configfactory, botfactory, ircfactory, userfactory, res
         status=200,
     )
 
-    irc.say(user, '#nakki', '.euribor')
-    assert bot.backend.message_sent == rawlist(
-        'PRIVMSG #nakki :12 kk: 2.449 ja 3 kk: 2.553'
-    )
+    irc.say(user, "#nakki", ".euribor")
+    assert bot.backend.message_sent == rawlist("PRIVMSG #nakki :Euribor (2024-11-15): 12 kk: 2.449 ja 3 kk: 2.553")
+
 
 def test_euribor_command_with_margin(configfactory, botfactory, ircfactory, userfactory, responses):
     settings = configfactory(TEST_NAME, TEST_CONFIG)
-    bot = botfactory.preloaded(settings, ['euribor'])
+    bot = botfactory.preloaded(settings, ["euribor"])
     irc = ircfactory(bot)
-    user = userfactory('Tuplis')
+    user = userfactory("Tuplis")
 
     responses.get(
         EURIBOR_ENDPOINT,
@@ -81,7 +105,7 @@ def test_euribor_command_with_margin(configfactory, botfactory, ircfactory, user
         status=200,
     )
 
-    irc.say(user, '#nakki', '.euribor 0.5')
+    irc.say(user, "#nakki", ".euribor 0.5")
     assert bot.backend.message_sent == rawlist(
-        'PRIVMSG #nakki :12 kk: 2.449 ja 3 kk: 2.553, mutta sulle 2.949 ja 3.053'
+        "PRIVMSG #nakki :Euribor (2024-11-15): 12 kk: 2.449 ja 3 kk: 2.553, mutta sulle 2.949 ja 3.053"
     )
