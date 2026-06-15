@@ -74,8 +74,8 @@ def trigger(bot, trigger):
         ytd_prices = get_prices(ticker, "ytd")
         year_first = ytd_prices["Open"].iloc[0]
         current_price = ytd_prices["Close"].iloc[-1]
-        currency = info.get("financialCurrency") or info.get("currency")
-        message = f'{info.get("longName")} ({ticker.upper()}): {current_price:.3f} {currency}.'
+        currency = info.get("currency") or info.get("financialCurrency")
+        message = f"{info.get('longName')} ({ticker.upper()}): {current_price:.3f} {currency}."
 
         today = info.get("regularMarketChangePercent", 0) / 100
         if today > 0:
