@@ -64,8 +64,7 @@ def refresh_spotify_token(bot, nick, spotify):
 
         return spotify
     else:
-        bot.say("refresh token puuttuu tai jotain :-(")
-        bot.say(f"{response.status_code}")
+        bot.say(f"refresh token puuttuu tai jotain :-( spotify sanoi tälleen: {response.status_code} - {response.text}")
 
 
 def get_now_playing(bot, nick, spotify):
